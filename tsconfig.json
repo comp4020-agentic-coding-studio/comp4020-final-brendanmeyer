@@ -1,6 +1,7 @@
 {
-  // Covers the supplied harness (spec/, scripts/); widen `include` if your app
-  // is TypeScript and you want `pnpm typecheck` to cover it too.
+  // Covers the supplied harness (spec/, scripts/) plus this app's own
+  // server and shared code; the client has its own tsconfig.client.json
+  // since it needs a real emit, not just type-checking.
   "compilerOptions": {
     "target": "ES2023",
     "module": "ESNext",
@@ -16,5 +17,5 @@
     "moduleDetection": "force",
     "verbatimModuleSyntax": true
   },
-  "include": ["*.ts", "spec", "scripts"]
+  "include": ["*.ts", "spec", "scripts", "src/server", "src/shared"]
 }
