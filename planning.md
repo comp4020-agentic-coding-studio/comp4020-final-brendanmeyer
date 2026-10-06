@@ -53,6 +53,8 @@ When a new player enters:
 
 Their arrival must not instantly alter the Snake's movement before the introduction finishes.
 
+A player does not count toward the active-player score multiplier during this introduction period.
+
 ---
 
 ## 4. Leaving an Active Game
@@ -62,8 +64,9 @@ If a player leaves while **2 or more players will remain**, their cursor does no
 Instead:
 
 1. their cursor flashes for 2 seconds;
-2. it stops contributing to the centroid when they are considered disconnected;
-3. after the 2-second visual departure animation, the cursor disappears.
+2. it stops contributing to the centroid as soon as they are considered disconnected;
+3. it stops counting toward the multiplayer score multiplier;
+4. after the 2-second visual departure animation, the cursor disappears.
 
 If a departure reduces the game to **fewer than 2 players**, the game pauses.
 
@@ -93,7 +96,11 @@ Lobby users can:
 - view collective records;
 - view persistent global statistics.
 
-Lobby users do not affect the centroid.
+Lobby users do not:
+
+- affect the centroid;
+- count toward the active-player multiplier;
+- receive active-player participation credit.
 
 When a player slot becomes available, lobby users may enter the active game.
 
@@ -119,15 +126,20 @@ Persistent data includes:
 
 - run history;
 - collective high score;
-- player count for each run;
+- raw score for each run;
+- multiplied collective score for each run;
+- player count throughout each run;
+- peak player count;
+- average active player count;
 - run duration;
 - participant pseudonyms;
+- individual participation results;
 - cumulative global statistics;
 - the path of the global-record Snake run.
 
-The global-record path can be rendered in later games as a **ghost trail** (include the player mouse positions), allowing future groups to see the path created by the best previous group.
+The global-record path can be rendered in later games as a **ghost trail**, including the player cursor positions that produced that path, allowing future groups to see how the best previous group collectively controlled the Snake.
 
-Ephemeral information such as live cursor positions does not need to persist between sessions.
+Ephemeral live cursor positions do not need to persist between ordinary sessions, except where cursor-position data is deliberately saved as part of a record-run ghost trail.
 
 ---
 
@@ -137,31 +149,126 @@ Ephemeral information such as live cursor positions does not need to persist bet
 
 The primary score belongs to the group.
 
-The collective score is based on normal Snake progression, such as food collected and resulting Snake length.
+There are two collective score values for every run:
 
-Only the collective score is eligible for:
+- **Raw Score** — the underlying Snake score before any multiplayer multiplier is applied.
+- **Collective Score** — the final score after multiplayer bonuses are applied.
+
+The collective score is the score used for:
 
 - run records;
 - historical rankings;
 - the global high score;
-- the global-record ghost trail.
+- determining the global-record ghost trail.
+
+The raw score remains visible in run history so that the effect of group size is transparent.
+
+### Base Food Score
+
+Each food item has a fixed server-controlled base value.
+
+For example:
+
+`baseFoodPoints = 100`
+
+When the Snake collects food, the server calculates the points earned for that specific food event using the number of active players at that moment.
+
+The multiplayer multiplier is therefore applied **per food event**, rather than once at the end of a run.
+
+This prevents players who join near the end of a run from retroactively increasing the value of earlier achievements.
+
+### Multiplayer Multiplier
+
+For `n` active players:
+
+`multiplier(n) = 1 + ((n - 2) / 10)^2`
+
+where:
+
+`2 <= n <= 12`
+
+This creates an **increasing-return multiplier**.
+
+Small groups receive only a modest bonus, while very large groups receive a substantially stronger reward because collective control becomes increasingly difficult as each player's individual influence becomes smaller.
+
+The resulting multiplier is:
+
+| Active Players | Individual Influence | Score Multiplier |
+|---|---:|---:|
+| 2 | 50.0% | ×1.00 |
+| 3 | 33.3% | ×1.01 |
+| 4 | 25.0% | ×1.04 |
+| 5 | 20.0% | ×1.09 |
+| 6 | 16.7% | ×1.16 |
+| 7 | 14.3% | ×1.25 |
+| 8 | 12.5% | ×1.36 |
+| 9 | 11.1% | ×1.49 |
+| 10 | 10.0% | ×1.64 |
+| 11 | 9.1% | ×1.81 |
+| 12 | 8.3% | ×2.00 |
+
+For each food collection:
+
+`foodEventScore = baseFoodPoints × multiplier(activePlayers)`
+
+The resulting value is rounded to the nearest whole point.
+
+For example, with food worth 100 raw points:
+
+- 2 players earn `100 × 1.00 = 100`;
+- 4 players earn `100 × 1.04 = 104`;
+- 8 players earn `100 × 1.36 = 136`;
+- 12 players earn `100 × 2.00 = 200`.
+
+The final collective score is:
+
+`collectiveScore = sum(all foodEventScores)`
+
+The raw score is:
+
+`rawScore = sum(all baseFoodPoints)`
+
+### Who Counts as an Active Player
+
+A participant only counts toward `n` when they are actively influencing the Snake's centroid.
+
+Therefore:
+
+- active controller → **counts**;
+- spectator/lobby user → **does not count**;
+- player in the 2-second joining introduction → **does not count yet**;
+- player who has disconnected and is flashing during the departure animation → **does not count**;
+- player whose input has exceeded the stale-input timeout → **does not count**.
+
+The scoring rule therefore follows the same definition of an active player as the control system:
+
+**If a player influences the centroid, they count toward the multiplier. If they do not influence the centroid, they do not count toward the multiplier.**
 
 ### Personal Participation Score
 
-Each participant may also receive a personal **participation score** (make the calcuation different for each play, so they cannot compare, and so they can have their own personal best **-&#x20;**&#x54;he exact multiplier formula should  server-controlled) for that run.
+Each participant also receives a personal **participation score** for the run.
 
-This represents participation rather than individual victory.
+This score represents their own involvement rather than individual victory.
 
 It may take into account:
 
 - how long the player actively participated;
-- how many successful food collections occurred while they were active;
+- how many food collections occurred while they were active;
 - whether they remained through the completion of the run;
-- other cooperative contributions that can be measured without assigning greater control to one person.
+- other cooperative contributions that can be measured without giving them greater control.
 
-Participation scores should **not create a competitive individual leaderboard**.
+The exact participation calculation is **server-controlled and intentionally personalised**, so different players' participation scores are not designed to be directly comparable.
 
-They should also never change a player's influence over the Snake. Every player always retains exactly `1/n` control.
+A player can use their participation score to track their **own personal best**, but there is no public participation leaderboard.
+
+Participation scores must never:
+
+- affect the collective score;
+- affect the multiplayer multiplier;
+- increase or decrease a player's influence over the Snake;
+- create a competitive ranking between participants.
+
+Every active player always retains exactly `1/n` control of the centroid.
 
 ---
 
@@ -177,11 +284,15 @@ The Snake dies when it:
 After game over:
 
 1. the completed run is saved;
-2. persistent/global statistics are updated;
-3. records are checked and updated;
-4. the game displays the result;
-5. an automatic countdown begins;
-6. a new run starts if at least 2 players remain.
+2. the raw score is saved;
+3. the final collective score is saved;
+4. multiplayer/player-count statistics are saved;
+5. individual participation results are saved;
+6. persistent/global statistics are updated;
+7. records are checked and updated;
+8. the game displays the result;
+9. an automatic countdown begins;
+10. a new run starts if at least 2 players remain.
 
 If fewer than 2 players remain, the next game waits until the minimum player count is restored.
 
@@ -248,12 +359,19 @@ Clients submit player input, but the server determines:
 - Snake movement;
 - collisions;
 - food collection;
-- score;
+- raw score;
+- multiplayer multiplier;
+- collective score;
 - game state.
 
 Player inputs have a stale-input timeout.
 
 If the server stops receiving valid input/connection activity from a participant for the configured timeout period, that participant is treated as disconnected rather than allowing an old cursor position to influence the Snake indefinitely.
+
+Once timed out, that participant immediately stops:
+
+- affecting the centroid;
+- counting toward the multiplayer multiplier.
 
 Normal disconnect behaviour then applies.
 
@@ -261,24 +379,64 @@ Normal disconnect behaviour then applies.
 
 ## 13. Group-Size Difficulty and Multiplier
 
-Larger groups receive a score multiplier because coordination becomes increasingly difficult as individual influence decreases.
+Larger groups receive an increasingly strong score multiplier because coordination becomes more difficult as individual influence decreases.
 
-For `n` active players, each player controls only:
+For `n` active players, each player contributes exactly:
 
 `1 / n`
 
 of the resulting centroid.
 
-The exact multiplier formula should remain deterministic and server-controlled.
+At the minimum group size:
 
-The multiplier should increase gradually rather than making large groups overwhelmingly more valuable than small ones.
+`2 players = 1/2 influence each = 50%`
 
-The run history should record both:
+At the maximum group size:
 
-- the raw Snake result; and
-- the resulting multiplied score.
+`12 players = 1/12 influence each ≈ 8.3%`
 
-This makes comparisons between different group sizes understandable.
+The multiplayer multiplier is:
+
+`multiplier(n) = 1 + ((n - 2) / 10)^2`
+
+for:
+
+`2 <= n <= 12`
+
+Unlike a diminishing-returns formula, this curve deliberately gives **increasing returns at larger group sizes**.
+
+Moving from 2 to 4 players produces relatively little additional scoring benefit:
+
+`×1.00 → ×1.04`
+
+while moving toward the maximum group size produces substantially greater rewards:
+
+`8 players = ×1.36`
+
+`10 players = ×1.64`
+
+`12 players = ×2.00`
+
+This reflects the design intention that coordinating a very large group should be recognised as qualitatively harder than coordinating a small group.
+
+The multiplier is:
+
+- deterministic;
+- calculated on the server;
+- based only on active players;
+- applied independently to each food collection.
+
+The player count used for a food event is the number of active centroid-contributing players at the moment the server confirms that the food has been collected.
+
+Run history records:
+
+- raw score;
+- collective multiplied score;
+- player count changes;
+- peak player count;
+- average active player count.
+
+This allows different runs to remain understandable even when their group sizes change during play.
 
 ---
 
@@ -290,11 +448,18 @@ The implementation should preserve these rules:
 2. A game cannot contain more than 12 active players.
 3. Every active player always contributes equally to the centroid.
 4. Spectators/lobby users never affect gameplay.
-5. A joining player does not affect the centroid during their 2-second introduction.
-6. A disconnected player cannot continue influencing the game indefinitely.
-7. Falling below 2 players pauses rather than destroys the current run.
-8. The same paused run can resume when another player joins.
-9. Mouse, touch and keyboard all control the same virtual-cursor abstraction.
-10. Collective achievements are more important than individual achievements.
-11. Completed runs and global records survive sessions, restarts and redeployments.
-12. There is no single-player fallback or bot replacement for missing humans.
+5. Spectators/lobby users never affect the multiplayer multiplier.
+6. A joining player does not affect the centroid or multiplier during their 2-second introduction.
+7. A disconnected player stops affecting the centroid and multiplier immediately, even though their cursor remains visible and flashes for 2 seconds.
+8. A stale/timed-out player cannot continue affecting control or scoring.
+9. Falling below 2 players pauses rather than destroys the current run.
+10. The same paused run can resume when another player joins.
+11. Mouse, touch and keyboard all control the same virtual-cursor abstraction.
+12. The multiplayer multiplier is calculated separately for every food collection.
+13. Previously earned points cannot change when players join or leave later.
+14. A 2-player food event uses a ×1.00 multiplier.
+15. A 12-player food event uses a ×2.00 multiplier.
+16. Collective achievements are more important than individual achievements.
+17. Personal participation scores never alter collective scoring or player influence.
+18. Completed runs and global records survive sessions, restarts and redeployments.
+19. There is no single-player fallback or bot replacement for missing humans.
