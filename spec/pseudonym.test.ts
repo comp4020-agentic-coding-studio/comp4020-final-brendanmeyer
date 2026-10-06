@@ -31,11 +31,11 @@ function nextMessage(socket: WebSocket): Promise<ServerMessage> {
 
 it("rejects a name that's already taken", async () => {
   const a = await connect();
-  send(a, { t: "hello", name: "dup-name" });
+  send(a, { t: "hello", name: "dupname" });
   await nextMessage(a); // welcome
 
   const b = await connect();
-  send(b, { t: "hello", name: "dup-name" });
+  send(b, { t: "hello", name: "dupname" });
   const reply = await nextMessage(b);
   expect(reply.t).toBe("nameTaken");
 

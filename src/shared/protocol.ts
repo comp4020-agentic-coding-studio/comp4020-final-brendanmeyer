@@ -27,9 +27,14 @@ export interface NameTakenMessage {
   t: "nameTaken";
 }
 
+// Still carries the claim's identity: an invalid/empty name isn't a
+// rejection, it's a substitution — the visitor is welcomed under the
+// generated name instead.
 export interface NameInvalidMessage {
   t: "nameInvalid";
   assigned: string;
+  token: string;
+  playerId: number;
 }
 
 export interface PlayerView {

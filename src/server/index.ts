@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { renderMarkdown } from "./markdown.ts";
 import { serveStatic } from "./static.ts";
 import { getSummary } from "./db/repo.ts";
+import { attachWebSocketServer } from "./ws.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 
@@ -54,6 +55,8 @@ const server = createServer((req, res) => {
     }
   });
 });
+
+attachWebSocketServer(server);
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Collective Snake listening on 0.0.0.0:${PORT}`);
