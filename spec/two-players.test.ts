@@ -11,25 +11,38 @@ function wsUrl(path: string): string {
   return new URL(path, baseUrl).toString().replace(/^http/, "ws");
 }
 
+// Joining requires the handshake (spec/pseudonym.test.ts) before a socket
+// counts as an active player at all, so this sends an empty hello (an
+// auto-generated pseudonym is fine here) right after opening.
 function connect(): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(wsUrl("/ws"));
-    socket.once("open", () => resolve(socket));
+    socket.once("open", () => {
+      socket.send(JSON.stringify({ t: "hello" }));
+      resolve(socket);
+    });
     socket.once("error", reject);
   });
 }
 
-function nextMessage(socket: WebSocket): Promise<ServerMessage> {
+function nextState(socket: WebSocket): Promise<ServerMessage & { t: "state" }> {
   return new Promise((resolve, reject) => {
-    socket.once("message", (data) => resolve(JSON.parse(data.toString())));
+    const onMessage = (data: Buffer): void => {
+      const msg = JSON.parse(data.toString());
+      if (msg.t === "state") {
+        socket.off("message", onMessage);
+        resolve(msg);
+      }
+    };
+    socket.on("message", onMessage);
     socket.once("error", reject);
   });
 }
 
 it("waits alone, then runs once a second session joins", async () => {
   const a = await connect();
-  const firstState = await nextMessage(a);
-  expect(firstState).toMatchObject({ t: "state", status: "waiting" });
+  const firstState = await nextState(a);
+  expect(firstState.status).toBe("waiting");
 
   const b = await connect();
 

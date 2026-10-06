@@ -1,21 +1,28 @@
-// The WebSocket handshake: claiming or resuming a pseudonym. The game loop
-// (not built yet) reads `connections` to know who's actually connected;
-// this module's job stops at identity.
+// The WebSocket handshake (claiming or resuming a pseudonym) and the
+// connection registry the game loop reads to know who's actually
+// connected and where their cursor currently is.
 
 import type { IncomingMessage, Server } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocketServer, type WebSocket } from "ws";
 import type { ClientMessage, ServerMessage } from "../shared/protocol.ts";
 import { claimName, findPlayerByToken } from "./db/repo.ts";
+import type { Vec2 } from "./game/state.ts";
 
 export interface Connection {
   socket: WebSocket;
   playerId: number;
   name: string;
   token: string;
+  lastInput: Vec2;
 }
 
 export const connections = new Map<WebSocket, Connection>();
+
+function clamp01(n: number): number {
+  if (Number.isNaN(n)) return 0.5;
+  return Math.max(0, Math.min(1, n));
+}
 
 function send(socket: WebSocket, message: ServerMessage): void {
   if (socket.readyState === socket.OPEN) {
@@ -32,6 +39,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
         playerId: existing.id,
         name: existing.name,
         token: existing.token,
+        lastInput: { x: 0.5, y: 0.5 },
       });
       send(socket, {
         t: "welcome",
@@ -54,6 +62,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
     playerId: result.player.id,
     name: result.player.name,
     token: result.player.token,
+    lastInput: { x: 0.5, y: 0.5 },
   });
 
   if (result.assignedName) {
@@ -83,8 +92,12 @@ function handleMessage(socket: WebSocket, raw: string): void {
   }
   if (msg.t === "hello") {
     handleHello(socket, msg);
+    return;
   }
-  // "input" messages are for the game loop, not built yet.
+  if (msg.t === "input") {
+    const conn = connections.get(socket);
+    if (conn) conn.lastInput = { x: clamp01(msg.x), y: clamp01(msg.y) };
+  }
 }
 
 export function attachWebSocketServer(server: Server): void {

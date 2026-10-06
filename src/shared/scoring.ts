@@ -1,10 +1,10 @@
 // The group-size multiplier applied to every food event's collective score.
 // multiplier(n) = 1 + ((n - 2) / 10)^2, for 2 <= n <= 12 active players
-// (planning.md section 14). Not implemented yet: spec/scoring.test.ts
-// drives this, and should currently fail.
+// (planning.md section 14): an increasing-returns curve, deliberately
+// rewarding bigger groups rather than tapering off as they grow.
 
-export function multiplier(_activePlayers: number): number {
-  throw new Error("multiplier() not implemented yet");
+export function multiplier(activePlayers: number): number {
+  return 1 + ((activePlayers - 2) / 10) ** 2;
 }
 
 export const BASE_FOOD_POINTS = 100;
