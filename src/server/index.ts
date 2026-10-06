@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { renderMarkdown } from "./markdown.ts";
 import { serveStatic } from "./static.ts";
+import { getSummary } from "./db/repo.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 
@@ -25,6 +26,14 @@ const server = createServer((req, res) => {
   if (url.pathname === "/readme" || url.pathname === "/readme/") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(readmeHtml);
+    return;
+  }
+
+  if (url.pathname === "/api/summary") {
+    const token = url.searchParams.get("token");
+    const summary = getSummary(token);
+    res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(summary));
     return;
   }
 
