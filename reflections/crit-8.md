@@ -1,0 +1,9 @@
+# Crit 8 reflection
+
+**What was the breakthrough that moved the work forward?**
+
+Before any server code existed, I had multiple AI tools (Claude, ChatGPT and Qwen) spend a whole phase just researching and planning: each read through the assignment brief and the course template and worked out its own idea for an implementation approach, rather than doing the research, the planning and the coding all in one conversation. Comparing what came back mattered more than I expected. Even within Claude Code alone, splitting the work across a separate research pass and a separate planning pass turned up things a single pass could easily have missed, like actually checking whether Node's built-in SQLite module was stable enough to use rather than just trusting it from memory. I don't think one tool working straight through in a single sitting would have caught that as reliably. When I'm still shaping an idea rather than writing code, getting more than one AI involved, each without the same assumptions already baked in from earlier in the conversation, seems worth the extra setup, and it's something I want to keep doing at the planning stage of future projects rather than just defaulting to whichever single tool I happen to open first.
+
+**What did this work change about who I want to be as a software developer?**
+
+Writing tests before the code is something I've always wanted to do, but in practice I usually just jump straight into programming and never actually write them — tests end up an afterthought if they happen at all. This time I had the tests written and failing before any server code existed, and I actually ran them to confirm they failed, rather than just assuming they would. Watching `pnpm test` fail exactly the way I expected, several times over, before it finally passed, made test-driven development feel like a real practice rather than just something I had read about and agreed with in theory. I want to actually keep doing it from here.

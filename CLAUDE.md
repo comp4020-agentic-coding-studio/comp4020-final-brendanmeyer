@@ -4,7 +4,7 @@
 
 ## What good means for this build (crit 8 scope)
 
-1. Ensure that `README.md` and `spec/` tests are aligned from `CLAUDE.md` and all are consistent together.
+1. `README.md` and the `spec/` tests stay aligned with what this file says, so all three are consistent with one another.
 2. A stranger can open the deployed link and, whether that's by opening a second browser window themselves or by someone else joining, within a few seconds see two independent cursors visibly steer one shared snake toward their shared centroid. Nothing beyond what's on screen should need explaining.
 3. Scoring is real and server-authoritative: the exact `multiplier(n) = 1 + ((n - 2) / 10)^2` formula from `planning.md` §14, not a placeholder constant standing in for it.
 4. A visitor's own result persists and is shown back to *them* specifically — not just a global number — when they return, including across a restart or redeploy (the one Fly volume at `/data` is the only durable storage; nothing else survives).
@@ -16,7 +16,7 @@ What's explicitly **not** good-this-week, and so isn't a defect to fix now: pass
 
 ## Process rules for this build
 
-- **Tests first.** Before each step, code relevant `spec/*.test.ts` file exercises, the test itself is written and run, and it is expected to fail, commit tests first. A feature isn't done until that test — and everything earlier — is green again.
-- **Commit at each meaningful step**, not in one dump at the end. `INPROGRESS.md`'s narrative grows after each commit (use the process-recorder skill) and cites them by hash, so the account is checkable against real history, not a summary written after the fact.
+- **Tests first.** Before the code a `spec/*.test.ts` file exercises gets written, the test itself is written, run, confirmed to fail, and committed. A feature isn't done until that test — and everything earlier — is green again.
+- **Commit at each meaningful step**, not in one dump at the end. `INPROGRESS.md`'s narrative grows after each commit, via the process-recorder skill, citing commits by hash, so the account is checkable against real history, not a summary written after the fact.
 - **Build the smallest schema that carries the core interaction.** Don't reach ahead into a deferred invariant just because it would be easy to add while already in the relevant file — scope creep here is still scope creep, even when it's "good" scope.
 - `pnpm check` (typecheck + test) passes locally before a step is described as shipping working behaviour.
