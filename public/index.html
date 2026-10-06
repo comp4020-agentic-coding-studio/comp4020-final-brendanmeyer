@@ -4,14 +4,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Collective Snake</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #0b1021; color: #e5e7eb; font-family: sans-serif; }
+      main { display: flex; flex-direction: column; height: 100%; }
+      header { padding: 0.75rem 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; }
+      header a { color: #93c5fd; }
+      #game { flex: 1; width: 100%; display: block; touch-action: none; }
+      #last-run { padding: 0 1rem 0.75rem; font-size: 0.9rem; color: #9ca3af; }
+    </style>
   </head>
   <body>
     <main>
-      <h1>Collective Snake</h1>
-      <p>
-        The game itself is still being wired up here — see
-        <a href="/readme/">the README</a> for what's live so far.
-      </p>
+      <header>
+        <strong>Collective Snake</strong>
+        <span id="status">Connecting…</span>
+        <span id="score"></span>
+        <a href="/readme/">What this is</a>
+      </header>
+      <canvas id="game"></canvas>
+      <div id="last-run"></div>
     </main>
+    <script type="module" src="/client/main.js"></script>
   </body>
 </html>
