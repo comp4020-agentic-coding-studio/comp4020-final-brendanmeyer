@@ -32,6 +32,7 @@ function broadcast(): void {
       name: c.name,
       x: c.lastInput.x,
       y: c.lastInput.y,
+      color: c.colorIndex ?? 0,
       state: c.role as CursorRole,
     })),
     snake: { path: state.snake.map((p): [number, number] => [p.x, p.y]) },

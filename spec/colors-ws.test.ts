@@ -35,14 +35,18 @@ function colorOf(msg: ServerMessage): number {
   return msg.color;
 }
 
+// High palette indices, deliberately: connections elsewhere in the suite
+// that don't request a colour always get the lowest free one, so a test
+// asserting an exact index stays clear of those by picking from the top
+// instead of the bottom.
 it("assigns the requested colour, or a different one if it's already taken", async () => {
-  const a = await connect(2);
+  const a = await connect(15);
   const welcomeA = await nextMessage(a);
-  expect(colorOf(welcomeA)).toBe(2);
+  expect(colorOf(welcomeA)).toBe(15);
 
-  const b = await connect(2); // same colour, already reserved by a
+  const b = await connect(15); // same colour, already reserved by a
   const welcomeB = await nextMessage(b);
-  expect(colorOf(welcomeB)).not.toBe(2);
+  expect(colorOf(welcomeB)).not.toBe(15);
 
   a.close();
   b.close();
@@ -51,21 +55,21 @@ it("assigns the requested colour, or a different one if it's already taken", asy
 it(
   "releases a colour once the player is fully removed, not just leaving",
   async () => {
-    const a = await connect(5);
+    const a = await connect(14);
     await nextMessage(a);
     a.close();
 
     // Still within the 2s leaving flash: the colour must not be reusable yet.
-    const bEarly = await connect(5);
+    const bEarly = await connect(14);
     const welcomeBEarly = await nextMessage(bEarly);
-    expect(colorOf(welcomeBEarly)).not.toBe(5);
+    expect(colorOf(welcomeBEarly)).not.toBe(14);
     bEarly.close();
 
-    // Past the flash: a is fully removed, so 5 is free again.
+    // Past the flash: a is fully removed, so 14 is free again.
     await new Promise((resolve) => setTimeout(resolve, 2200));
-    const bLate = await connect(5);
+    const bLate = await connect(14);
     const welcomeBLate = await nextMessage(bLate);
-    expect(colorOf(welcomeBLate)).toBe(5);
+    expect(colorOf(welcomeBLate)).toBe(14);
     bLate.close();
   },
   8000,
