@@ -9,12 +9,21 @@ import type { ClientMessage, ServerMessage } from "../shared/protocol.ts";
 import { claimName, findPlayerByToken } from "./db/repo.ts";
 import type { Vec2 } from "./game/state.ts";
 
+// The seven states a connection can be in. Only "active" | "introducing" |
+// "leaving" | "resuming" ever appear in a PlayerView -- spectators, queued,
+// and offered visitors are never rendered as players.
+export type Role = "active" | "introducing" | "leaving" | "resuming" | "spectator" | "queued" | "offered";
+
 export interface Connection {
   socket: WebSocket;
   playerId: number;
   name: string;
   token: string;
   lastInput: Vec2;
+  role: Role;
+  roleChangedAt: number;
+  lastActivityAt: number;
+  colorIndex: number | null;
 }
 
 export const connections = new Map<WebSocket, Connection>();
@@ -64,6 +73,10 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
         name: existing.name,
         token: existing.token,
         lastInput: { x: 0.5, y: 0.5 },
+        role: "active",
+        roleChangedAt: Date.now(),
+        lastActivityAt: Date.now(),
+        colorIndex: null,
       });
       send(socket, {
         t: "welcome",
@@ -87,6 +100,10 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
     name: result.player.name,
     token: result.player.token,
     lastInput: { x: 0.5, y: 0.5 },
+    role: "active",
+    roleChangedAt: Date.now(),
+    lastActivityAt: Date.now(),
+    colorIndex: null,
   });
 
   if (result.assignedName) {

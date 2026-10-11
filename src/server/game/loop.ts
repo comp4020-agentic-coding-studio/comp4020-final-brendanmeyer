@@ -61,13 +61,18 @@ function tick(): void {
   const n = active.length;
 
   if (n < 2) {
-    if (state.status === "running") state = { ...state, status: "waiting" };
+    if (state.status === "running") state = { ...state, status: "waiting", pausedWithRun: true };
     broadcast();
     return;
   }
 
   if (state.status === "waiting") {
-    state = { ...state, status: "running", food: state.food ?? spawnFood(state.snake) };
+    state = {
+      ...state,
+      status: "running",
+      food: state.food ?? spawnFood(state.snake),
+      pausedWithRun: false,
+    };
     runStartedAt = Date.now();
     peakPlayersThisRun = 0;
   }

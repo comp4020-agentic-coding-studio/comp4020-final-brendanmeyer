@@ -12,6 +12,13 @@ export interface GameState {
   food: Vec2 | null;
   rawScore: number;
   collectiveScore: number;
+  // True once a running game has dropped below 2 active players and its
+  // state is being preserved rather than ended (planning.md section 5's "if
+  // fewer than 2 remain, pause"). Never sent on the wire -- the waiting and
+  // paused UI are identical; it only decides server-side whether a newly
+  // activated connection gets the 5-second resume countdown (section 7) or
+  // the normal 2-second join introduction (section 4).
+  pausedWithRun: boolean;
 }
 
 export const TICK_MS = 66; // ~15Hz
@@ -35,5 +42,6 @@ export function freshState(): GameState {
     food: null,
     rawScore: 0,
     collectiveScore: 0,
+    pausedWithRun: false,
   };
 }
