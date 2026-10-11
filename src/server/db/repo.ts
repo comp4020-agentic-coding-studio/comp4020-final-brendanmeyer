@@ -2,7 +2,7 @@
 // token a browser uses to prove it's the same visitor later), and a
 // finished run's score, linked to whoever played it.
 
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { db } from "./index.ts";
 import { isNewRecord, sortRecords } from "../../shared/leaderboard.ts";
 import type { ReplaySample } from "../game/replay.ts";
@@ -11,6 +11,11 @@ export interface Player {
   id: number;
   name: string;
   token: string;
+}
+
+interface PlayerRow extends Player {
+  passwordHash: string | null;
+  passwordSalt: string | null;
 }
 
 const NAME_PATTERN = /^[a-zA-Z0-9]{1,22}$/;
@@ -27,25 +32,69 @@ function isUniqueConstraintOn(err: unknown, column: string): boolean {
   return err instanceof Error && err.message.includes(`UNIQUE constraint failed: players.${column}`);
 }
 
+// A blank password (null hash/salt, including every player claimed before
+// this column existed) means that name is retrievable by anyone who just
+// knows it -- no password required at all, not "must match a blank one".
+function hashPassword(password: string): { hash: string; salt: string } | null {
+  if (!password) return null;
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 32).toString("hex");
+  return { hash, salt };
+}
+
+function verifyPassword(row: Pick<PlayerRow, "passwordHash" | "passwordSalt">, password: string): boolean {
+  if (row.passwordHash === null || row.passwordSalt === null) return true;
+  const candidate = scryptSync(password, row.passwordSalt, 32);
+  const stored = Buffer.from(row.passwordHash, "hex");
+  return candidate.length === stored.length && timingSafeEqual(candidate, stored);
+}
+
+function findPlayerRowByNameLower(nameLower: string): PlayerRow | undefined {
+  const row = db
+    .prepare("SELECT id, name, token, password_hash AS passwordHash, password_salt AS passwordSalt FROM players WHERE name_lower = ?")
+    .get(nameLower) as PlayerRow | undefined;
+  return row;
+}
+
+// Resolves an already-connected identity before falling through to a fresh
+// claim: a live token wins outright (password isn't even checked), and
+// failing that, a validly-formed, already-claimed name with a matching
+// password retrieves it from a device that doesn't hold its token.
+export function findExistingPlayer(token: string | undefined, name: string | undefined, password: string): Player | undefined {
+  if (token) {
+    const byToken = findPlayerByToken(token);
+    if (byToken) return byToken;
+  }
+  const trimmed = (name ?? "").trim();
+  if (!isValidName(trimmed)) return undefined;
+  const row = findPlayerRowByNameLower(trimmed.toLowerCase());
+  if (!row || !verifyPassword(row, password)) return undefined;
+  return { id: row.id, name: row.name, token: row.token };
+}
+
 export type ClaimResult =
   | { ok: true; player: Player; assignedName?: string }
   | { ok: false; reason: "taken" };
 
 // Claims a pseudonym for a new session. An empty or invalid name gets a
 // generated one instead of being rejected; an already-taken valid name is
-// rejected outright (planning.md's case-insensitive uniqueness rule).
-export function claimName(requestedName: string | undefined): ClaimResult {
+// rejected outright (planning.md's case-insensitive uniqueness rule) --
+// retrieving an existing name with its password is findExistingPlayer's
+// job, called before this, so reaching here with a taken name is always a
+// genuine conflict, not a retrieval opportunity missed.
+export function claimName(requestedName: string | undefined, password: string): ClaimResult {
   const trimmed = (requestedName ?? "").trim();
   const wasValid = isValidName(trimmed);
   const name = wasValid ? trimmed : randomPseudonym();
   const nameLower = name.toLowerCase();
   const token = randomUUID();
+  const hashed = hashPassword(password);
 
   const insert = db.prepare(
-    "INSERT INTO players (name, name_lower, token, created_at) VALUES (?, ?, ?, ?)",
+    "INSERT INTO players (name, name_lower, token, created_at, password_hash, password_salt) VALUES (?, ?, ?, ?, ?, ?)",
   );
   try {
-    const info = insert.run(name, nameLower, token, Date.now());
+    const info = insert.run(name, nameLower, token, Date.now(), hashed?.hash ?? null, hashed?.salt ?? null);
     return {
       ok: true,
       player: { id: Number(info.lastInsertRowid), name, token },
@@ -53,7 +102,7 @@ export function claimName(requestedName: string | undefined): ClaimResult {
     };
   } catch (err) {
     if (isUniqueConstraintOn(err, "name_lower")) {
-      if (!wasValid) return claimName(undefined); // regenerate on an astronomically unlikely clash
+      if (!wasValid) return claimName(undefined, password); // regenerate on an astronomically unlikely clash
       return { ok: false, reason: "taken" };
     }
     throw err;

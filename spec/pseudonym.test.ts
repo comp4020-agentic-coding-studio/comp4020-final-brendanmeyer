@@ -31,23 +31,30 @@ function nextMessage(socket: WebSocket): Promise<ServerMessage> {
 
 // A fixed literal name permanently claims that row in the players table, so
 // a second run against the same long-lived local dev server collides with
-// the first run's own leftover claim, not just within a single run -- the
-// two tests below check the resulting name's exact value (unlike "rejects a
-// name that's already taken" above, which only checks pass/fail and so
-// tolerates that collision by coincidence). A unique-per-run name avoids it.
+// the first run's own leftover claim, not just within a single run -- every
+// test below checks the resulting name or role, not just pass/fail, so that
+// collision would change the outcome rather than being tolerated by
+// coincidence. A unique-per-run name avoids it.
 function uniqueName(prefix: string): string {
   return `${prefix}${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
 }
 
-it("rejects a name that's already taken", async () => {
+// A password-less name is retrievable by name alone (spec/password.test.ts),
+// so a second claimant with no token isn't rejected outright anymore -- it's
+// offered the same confirm-before-kick takeover as any other duplicate
+// identity (decisions/0001's Case 1), since the server genuinely can't tell
+// "someone else wants this name" from "its owner, on a new device" when no
+// password protects it.
+it("offers a takeover rather than rejecting outright when a live, password-less name is reclaimed", async () => {
+  const name = uniqueName("dup");
   const a = await connect();
-  send(a, { t: "hello", name: "dupname" });
+  send(a, { t: "hello", name });
   await nextMessage(a); // welcome
 
   const b = await connect();
-  send(b, { t: "hello", name: "dupname" });
+  send(b, { t: "hello", name });
   const reply = await nextMessage(b);
-  expect(reply.t).toBe("nameTaken");
+  expect(reply.t).toBe("alreadyConnected");
 
   a.close();
   b.close();

@@ -15,6 +15,7 @@ Collective Snake is a cooperative Snake variant: no single player steers the sna
 - up to 12 people can play in one run; beyond that you spectate, and can ask to join a FIFO queue that offers you the next open slot with a few seconds to claim it
 - a faint ghost trail of the current record run plays continuously while you play, toggled with `G`
 - a public stats page lists every record run and total play across the whole site, and lets you replay any record run on its own
+- a name can carry an optional password, set once when you first claim it: with one set, reclaiming that name on a different device needs it; with none, the name is reclaimable by anyone who knows it, no password required at all
 
 ## Try it
 
@@ -24,9 +25,8 @@ Open this page, pick a name and a colour, then open it again in a different brow
 
 Good doesn't require scale here. This is a small game for a handful of people in one sitting, not a packed arena, and it's judged on that basis. A good version of this app lets a group feel their own movement blend with everyone else's, without needing any instructions beyond what's on the screen. The scoring behind that moment is real, not decorative: it's calculated by the server, and it actually responds to how many people are playing, rewarding bigger groups rather than just allowing them. And when someone comes back later, after a refresh, a restart, or a redeploy, they should still find their own last result waiting for them, not a blank slate.
 
-It isn't yet trying to be good at remembering who someone is across different devices or looking especially polished. Those matter, and they're coming, but they're not what this version is judged on.
+It isn't yet trying to look especially polished, or to give a return visit anything beyond the shared score. Those matter, and they're coming, but they're not what this version is judged on.
 
 ## What comes next
 
-- persistent accounts secured with a password, so a name can be reclaimed on a different device, not just remembered for one pseudonym
 - a personal participation score, separate from the shared score, so a return visit has something of your own to beat

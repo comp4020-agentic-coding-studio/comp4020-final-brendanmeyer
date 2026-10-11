@@ -9,19 +9,25 @@ import { getStoredColor, getStoredName } from "./net.js";
 export interface EntryResult {
   name: string;
   color: number;
+  password: string;
 }
 
 export interface EntryElements {
   overlay: HTMLElement;
   nameInput: HTMLInputElement;
+  passwordInput: HTMLInputElement;
   swatchContainer: HTMLElement;
   playButton: HTMLButtonElement;
 }
 
 export function collectEntry(elements: EntryElements): Promise<EntryResult> {
-  const { overlay, nameInput, swatchContainer, playButton } = elements;
+  const { overlay, nameInput, passwordInput, swatchContainer, playButton } = elements;
   let selected = getStoredColor() ?? 0;
   nameInput.value = getStoredName() ?? "";
+  // Never persisted or pre-filled, unlike name/colour -- it's only ever
+  // needed when retrieving a name from a device that doesn't already hold
+  // its reconnect token, so there's nothing to usefully remember here.
+  passwordInput.value = "";
 
   const buttons = PLAYER_COLORS.map((hex, index) => {
     const button = document.createElement("button");
@@ -41,7 +47,7 @@ export function collectEntry(elements: EntryElements): Promise<EntryResult> {
   return new Promise((resolve) => {
     playButton.addEventListener("click", () => {
       overlay.hidden = true;
-      resolve({ name: nameInput.value, color: selected });
+      resolve({ name: nameInput.value, color: selected, password: passwordInput.value });
     });
   });
 }

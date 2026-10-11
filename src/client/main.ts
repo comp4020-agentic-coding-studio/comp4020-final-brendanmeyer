@@ -25,6 +25,7 @@ const ctx = required(canvas.getContext("2d"), "2d canvas context unavailable");
 const fullscreenBtn = required(document.querySelector<HTMLButtonElement>("#fullscreen"), "missing #fullscreen button");
 const entryOverlay = required(document.querySelector<HTMLElement>("#entry"), "missing #entry overlay");
 const nameInput = required(document.querySelector<HTMLInputElement>("#name-input"), "missing #name-input");
+const passwordInput = required(document.querySelector<HTMLInputElement>("#password-input"), "missing #password-input");
 const swatchContainer = required(document.querySelector<HTMLElement>("#swatches"), "missing #swatches");
 const playButton = required(document.querySelector<HTMLButtonElement>("#play"), "missing #play button");
 const requestJoinBtn = required(document.querySelector<HTMLButtonElement>("#request-join"), "missing #request-join");
@@ -72,9 +73,15 @@ function updateQueueUi(you: StateMessage["you"]): void {
 }
 
 async function start(): Promise<void> {
-  const { name, color } = await collectEntry({ overlay: entryOverlay, nameInput, swatchContainer, playButton });
+  const { name, color, password } = await collectEntry({
+    overlay: entryOverlay,
+    nameInput,
+    passwordInput,
+    swatchContainer,
+    playButton,
+  });
 
-  const { sendInput, takeOver, requestJoin, acceptOffer, declineOffer } = connect(name, color, {
+  const { sendInput, takeOver, requestJoin, acceptOffer, declineOffer } = connect(name, color, password, {
     onIdentity: (identityName) => {
       statusEl.textContent = `Playing as ${identityName}`;
     },

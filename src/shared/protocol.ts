@@ -13,6 +13,11 @@ export interface HelloMessage {
   // Requested palette index (planning.md section 2). Honoured if valid and
   // free; otherwise the server assigns a different one.
   color?: number;
+  // Set at claim time (optional -- blank means anyone can retrieve this
+  // name by name alone). Checked only when no live token already resolves
+  // this connection: retrieving an existing name from a device that
+  // doesn't hold its token requires the matching password.
+  password?: string;
 }
 
 export interface InputMessage {

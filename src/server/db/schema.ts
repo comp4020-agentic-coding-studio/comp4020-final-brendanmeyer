@@ -75,4 +75,11 @@ export function applySchema(db: DatabaseSync): void {
   addColumnIfMissing(db, "runs", "food_events", "INTEGER NOT NULL DEFAULT 0");
   addColumnIfMissing(db, "runs", "is_record", "INTEGER NOT NULL DEFAULT 0");
   addColumnIfMissing(db, "runs", "active_ms", "INTEGER NOT NULL DEFAULT 0");
+
+  // Password-based retrieval: null means no password was ever set for that
+  // name (every pre-existing player, from before this column existed,
+  // defaults to null here -- freely retrievable by name alone, the same
+  // rule as a fresh claim with a blank password).
+  addColumnIfMissing(db, "players", "password_hash", "TEXT");
+  addColumnIfMissing(db, "players", "password_salt", "TEXT");
 }

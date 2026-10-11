@@ -81,12 +81,12 @@ export interface Net {
   declineOffer: () => void;
 }
 
-export function connect(name: string, color: number, handlers: NetHandlers): Net {
+export function connect(name: string, color: number, password: string, handlers: NetHandlers): Net {
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   const socket = new WebSocket(`${scheme}://${location.host}/ws`);
 
   function sendHello(takeover?: boolean): void {
-    const hello: ClientMessage = { t: "hello", token: getStoredToken(), name, color, takeover };
+    const hello: ClientMessage = { t: "hello", token: getStoredToken(), name, color, password, takeover };
     socket.send(JSON.stringify(hello));
   }
 

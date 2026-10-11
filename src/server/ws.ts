@@ -6,7 +6,7 @@ import type { IncomingMessage, Server } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocketServer, type WebSocket } from "ws";
 import type { ClientMessage, ServerMessage } from "../shared/protocol.ts";
-import { claimName, findPlayerByToken, renameName } from "./db/repo.ts";
+import { claimName, findExistingPlayer, renameName } from "./db/repo.ts";
 import { createColorState, release, reserve } from "./game/colors.ts";
 import { MAX_ACTIVE, hasCursor, nextRole, occupiesSlot, type Role } from "./game/roles.ts";
 import { accept, createQueueState, dropOffer, enqueue, expireIfNeeded, makeOfferIfNeeded } from "./game/queue.ts";
@@ -121,74 +121,76 @@ function send(socket: WebSocket, message: ServerMessage): void {
 }
 
 function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello" }>): void {
-  if (msg.token) {
-    const existing = findPlayerByToken(msg.token);
-    if (existing) {
-      const live = findConnectionByPlayerId(existing.id);
-      if (live && !msg.takeover) {
-        send(socket, {
-          t: "alreadyConnected",
-          token: existing.token,
-          playerId: existing.id,
-          name: existing.name,
-        });
-        return;
-      }
-      // A chosen name replaces a generated pseudonym (or an earlier choice)
-      // on resume -- only when it's actually different, so re-submitting
-      // the name already in effect (the common case now the entry screen
-      // pre-fills it) doesn't hit the database every reconnect. An invalid
-      // or already-taken request just keeps the existing name rather than
-      // failing the connection over it.
-      const requestedName = msg.name?.trim();
-      let name = existing.name;
-      if (requestedName && requestedName.toLowerCase() !== existing.name.toLowerCase()) {
-        const renamed = renameName(existing.id, requestedName);
-        if (renamed.ok) name = renamed.name;
-      }
-
-      // A confirmed takeover carries the same identity's colour -- and
-      // stays fully active -- straight over rather than treating it as a
-      // fresh join; nothing about the identity changed, just which socket
-      // represents it. A genuine resume (no live connection to take over
-      // from) goes through the same capacity/join-role decision as a fresh
-      // claim.
-      const role: Role = live ? "active" : admit(occupiedSlotCount(), getState().status, getState().pausedWithRun);
-      // Spectators don't reserve a colour (planning.md section 2).
-      const colorIndex = live ? live.colorIndex : role === "spectator" ? null : reserve(colorState, existing.id, msg.color);
-
-      if (live) {
-        // Deleted before close() so a tick landing between the two never
-        // finds both connections live for the same playerId.
-        connections.delete(live.socket);
-        live.socket.close();
-      }
-
-      connections.set(socket, {
-        socket,
-        playerId: existing.id,
-        name,
-        token: existing.token,
-        lastInput: { x: 0.5, y: 0.5 },
-        role,
-        roleChangedAt: Date.now(),
-        lastActivityAt: Date.now(),
-        colorIndex,
-      });
+  // A live token wins outright; failing that, a validly-formed,
+  // already-claimed name with a matching password retrieves it from a
+  // device that doesn't hold its token (planning.md's password retrieval --
+  // a second way to prove the same identity, not a second identity).
+  const existing = findExistingPlayer(msg.token, msg.name, msg.password ?? "");
+  if (existing) {
+    const live = findConnectionByPlayerId(existing.id);
+    if (live && !msg.takeover) {
       send(socket, {
-        t: "welcome",
+        t: "alreadyConnected",
         token: existing.token,
         playerId: existing.id,
-        name,
-        // null only if every one of the 16 colours is somehow already
-        // reserved, which can't happen at the 12-active-player cap.
-        color: colorIndex ?? 0,
+        name: existing.name,
       });
       return;
     }
+    // A chosen name replaces a generated pseudonym (or an earlier choice)
+    // on resume -- only when it's actually different, so re-submitting
+    // the name already in effect (the common case now the entry screen
+    // pre-fills it) doesn't hit the database every reconnect. An invalid
+    // or already-taken request just keeps the existing name rather than
+    // failing the connection over it.
+    const requestedName = msg.name?.trim();
+    let name = existing.name;
+    if (requestedName && requestedName.toLowerCase() !== existing.name.toLowerCase()) {
+      const renamed = renameName(existing.id, requestedName);
+      if (renamed.ok) name = renamed.name;
+    }
+
+    // A confirmed takeover carries the same identity's colour -- and
+    // stays fully active -- straight over rather than treating it as a
+    // fresh join; nothing about the identity changed, just which socket
+    // represents it. A genuine resume (no live connection to take over
+    // from) goes through the same capacity/join-role decision as a fresh
+    // claim.
+    const role: Role = live ? "active" : admit(occupiedSlotCount(), getState().status, getState().pausedWithRun);
+    // Spectators don't reserve a colour (planning.md section 2).
+    const colorIndex = live ? live.colorIndex : role === "spectator" ? null : reserve(colorState, existing.id, msg.color);
+
+    if (live) {
+      // Deleted before close() so a tick landing between the two never
+      // finds both connections live for the same playerId.
+      connections.delete(live.socket);
+      live.socket.close();
+    }
+
+    connections.set(socket, {
+      socket,
+      playerId: existing.id,
+      name,
+      token: existing.token,
+      lastInput: { x: 0.5, y: 0.5 },
+      role,
+      roleChangedAt: Date.now(),
+      lastActivityAt: Date.now(),
+      colorIndex,
+    });
+    send(socket, {
+      t: "welcome",
+      token: existing.token,
+      playerId: existing.id,
+      name,
+      // null only if every one of the 16 colours is somehow already
+      // reserved, which can't happen at the 12-active-player cap.
+      color: colorIndex ?? 0,
+    });
+    return;
   }
 
-  const result = claimName(msg.name);
+  const result = claimName(msg.name, msg.password ?? "");
   if (!result.ok) {
     send(socket, { t: "nameTaken" });
     return;
