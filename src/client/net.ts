@@ -66,7 +66,7 @@ export interface NetHandlers {
   onIdentity: (name: string, color: number) => void;
   onState: (state: Extract<ServerMessage, { t: "state" }>) => void;
   // A tab sharing this browser's localStorage already resumed this token.
-  // The caller decides (e.g. via confirm()) and calls Net.takeOver() if so.
+  // The caller decides (e.g. via a dialog) and calls Net.takeOver() if so.
   onAlreadyConnected: (name: string) => void;
   // The server closed this socket -- most likely another tab took over.
   onDisconnected: () => void;

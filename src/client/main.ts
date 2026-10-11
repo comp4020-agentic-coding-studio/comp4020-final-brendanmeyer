@@ -1,5 +1,6 @@
 import { connect, getStoredToken } from "./net.js";
 import { collectEntry } from "./entry.js";
+import { showDialog } from "./dialog.js";
 import { trackInput } from "./input.js";
 import { draw, drawGhost } from "./render.js";
 import { setupFullscreen } from "./fullscreen.js";
@@ -31,6 +32,12 @@ const acceptOfferBtn = required(document.querySelector<HTMLButtonElement>("#acce
 const declineOfferBtn = required(document.querySelector<HTMLButtonElement>("#decline-offer"), "missing #decline-offer");
 const queueStatusText = document.createTextNode("");
 required(document.querySelector<HTMLElement>("#queue-status"), "missing #queue-status").prepend(queueStatusText);
+const dialogElements = {
+  overlay: required(document.querySelector<HTMLElement>("#dialog"), "missing #dialog overlay"),
+  message: required(document.querySelector<HTMLElement>("#dialog-message"), "missing #dialog-message"),
+  confirmButton: required(document.querySelector<HTMLButtonElement>("#dialog-confirm"), "missing #dialog-confirm"),
+  cancelButton: required(document.querySelector<HTMLButtonElement>("#dialog-cancel"), "missing #dialog-cancel"),
+};
 
 setupFullscreen(fullscreenBtn);
 
@@ -86,9 +93,13 @@ async function start(): Promise<void> {
     // this one isn't playing until the visitor confirms taking over.
     onAlreadyConnected: (takenName) => {
       statusEl.textContent = `${takenName} is already playing in another tab`;
-      if (confirm(`${takenName} is already being played in another tab. Take over and play here instead?`)) {
-        takeOver();
-      }
+      void showDialog(
+        dialogElements,
+        `${takenName} is already being played in another tab. Take over and play here instead?`,
+        "confirm",
+      ).then((confirmed) => {
+        if (confirmed) takeOver();
+      });
     },
     onDisconnected: () => {
       statusEl.textContent = "Disconnected — likely taken over from another tab";
@@ -97,8 +108,9 @@ async function start(): Promise<void> {
       // Simplest correct thing: reload rather than re-running start() in
       // place, which would register every one of its listeners a second
       // time (queue buttons, input tracking) on top of the first set.
-      alert("That name is already taken -- pick another.");
-      location.reload();
+      void showDialog(dialogElements, "That name is already taken -- pick another.", "alert").then(() => {
+        location.reload();
+      });
     },
   });
 
