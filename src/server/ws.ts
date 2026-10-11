@@ -8,11 +8,13 @@ import { WebSocketServer, type WebSocket } from "ws";
 import type { ClientMessage, ServerMessage } from "../shared/protocol.ts";
 import { claimName, findPlayerByToken } from "./db/repo.ts";
 import { createColorState, release, reserve } from "./game/colors.ts";
-import { hasCursor, nextRole, occupiesSlot, type Role } from "./game/roles.ts";
-import { admit } from "./game/roster.ts";
+import { MAX_ACTIVE, hasCursor, nextRole, occupiesSlot, type Role } from "./game/roles.ts";
+import { accept, createQueueState, dropOffer, enqueue, expireIfNeeded, makeOfferIfNeeded } from "./game/queue.ts";
+import { activateRole, admit } from "./game/roster.ts";
 import { getState, type Vec2 } from "./game/state.ts";
 
 const colorState = createColorState();
+const queueState = createQueueState();
 
 export type { Role } from "./game/roles.ts";
 
@@ -45,6 +47,22 @@ function occupiedSlotCount(): number {
   return count;
 }
 
+// This connection's position in the FIFO queue (1-indexed) and the
+// queue's current size -- null if it isn't actually waiting (e.g. it
+// already holds the offer). Read by loop.ts to build StateMessage.you.
+export function queuePositionOf(playerId: number): { position: number; size: number } | null {
+  const index = queueState.waiting.findIndex((entry) => entry.playerId === playerId);
+  if (index === -1) return null;
+  return { position: index + 1, size: queueState.waiting.length };
+}
+
+// Milliseconds left on this connection's claim window -- null if it
+// doesn't currently hold the offer.
+export function offerRemainingMs(playerId: number, now: number): number | null {
+  if (!queueState.offer || queueState.offer.entry.playerId !== playerId) return null;
+  return Math.max(0, queueState.offer.expiresAt - now);
+}
+
 function clamp01(n: number): number {
   if (Number.isNaN(n)) return 0.5;
   return Math.max(0, Math.min(1, n));
@@ -56,10 +74,12 @@ function markActivity(conn: Connection): void {
 
 // Applies planning.md section 5's two timing rules to every live
 // connection: no activity for 3 seconds starts the leaving flash; the
-// flash lasts 2 seconds before full removal. Called once per tick from
-// loop.ts, ahead of the simulation step, so a just-disconnected player
-// stops contributing to the centroid/multiplier the same tick it's
-// noticed.
+// flash lasts 2 seconds before full removal. Then the queue (section 7):
+// an unanswered offer expires back to spectator, and a freed slot with no
+// outstanding offer gets offered to whoever's waited longest. Called once
+// per tick from loop.ts, ahead of the simulation step, so a
+// just-disconnected player stops contributing to the centroid/multiplier
+// the same tick it's noticed.
 export function sweep(now: number): void {
   for (const conn of [...connections.values()]) {
     const decision = nextRole(conn.role, conn.roleChangedAt, conn.lastActivityAt, now);
@@ -70,6 +90,26 @@ export function sweep(now: number): void {
     } else if (decision !== null) {
       conn.role = decision;
       conn.roleChangedAt = now;
+    }
+  }
+
+  const expired = expireIfNeeded(queueState, now);
+  if (expired) {
+    const conn = findConnectionByPlayerId(expired.playerId);
+    if (conn) {
+      conn.role = "spectator";
+      conn.roleChangedAt = now;
+    }
+  }
+
+  if (occupiedSlotCount() < MAX_ACTIVE) {
+    const offered = makeOfferIfNeeded(queueState, now);
+    if (offered) {
+      const conn = findConnectionByPlayerId(offered.playerId);
+      if (conn) {
+        conn.role = "offered";
+        conn.roleChangedAt = now;
+      }
     }
   }
 }
@@ -195,6 +235,48 @@ function handleMessage(socket: WebSocket, raw: string): void {
     if (conn) {
       conn.lastInput = { x: clamp01(msg.x), y: clamp01(msg.y) };
       markActivity(conn);
+    }
+    return;
+  }
+
+  // Opt-in (planning.md section 7): only a spectator who explicitly asks
+  // joins the FIFO queue. The same action re-enters after a dropped offer,
+  // landing at the back since it's a fresh enqueue, not a resume of the
+  // old position.
+  if (msg.t === "requestJoin") {
+    const conn = connections.get(socket);
+    if (conn && conn.role === "spectator") {
+      conn.role = "queued";
+      conn.roleChangedAt = Date.now();
+      enqueue(queueState, { playerId: conn.playerId });
+    }
+    return;
+  }
+
+  if (msg.t === "acceptOffer") {
+    const conn = connections.get(socket);
+    if (conn && conn.role === "offered") {
+      const accepted = accept(queueState, conn.playerId);
+      if (accepted) {
+        // Same join-role decision as any other join (spec/join-intro.test.ts):
+        // the game being "running" still means an introduction, not an
+        // instant jump into active play.
+        conn.role = activateRole(getState().status, getState().pausedWithRun);
+        conn.roleChangedAt = Date.now();
+        conn.colorIndex = reserve(colorState, conn.playerId, undefined);
+      }
+    }
+    return;
+  }
+
+  if (msg.t === "declineOffer") {
+    const conn = connections.get(socket);
+    if (conn && conn.role === "offered") {
+      const dropped = dropOffer(queueState);
+      if (dropped) {
+        conn.role = "spectator";
+        conn.roleChangedAt = Date.now();
+      }
     }
   }
 }

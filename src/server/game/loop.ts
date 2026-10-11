@@ -4,12 +4,12 @@
 // is specifically role === "active" -- introducing/leaving/resuming have a
 // cursor on screen but don't contribute, per planning.md sections 4 and 5.
 
-import { connections, sweep } from "../ws.ts";
+import { connections, offerRemainingMs, queuePositionOf, sweep, type Connection } from "../ws.ts";
 import { recordRun } from "../db/repo.ts";
 import { foodEventScore, multiplier } from "../../shared/scoring.ts";
 import type { CursorRole } from "./roles.ts";
 import { buildYourView, countsTowardSimulation, hasCursor } from "./roles.ts";
-import type { ServerMessage, StateMessage } from "../../shared/protocol.ts";
+import type { ServerMessage, StateMessage, YourView } from "../../shared/protocol.ts";
 import { centroid } from "./centroid.ts";
 import { eatsFood, spawnFood } from "./food.ts";
 import { advance, hitsSelf, hitsWall, steer } from "./snake.ts";
@@ -48,9 +48,26 @@ function broadcast(): void {
   };
   for (const conn of all) {
     if (conn.socket.readyState !== conn.socket.OPEN) continue;
-    const message: ServerMessage = { ...shared, you: buildYourView(conn.role, conn.roleChangedAt, now) };
+    const you = buildYou(conn, now);
+    const message: ServerMessage = { ...shared, you };
     conn.socket.send(JSON.stringify(message));
   }
+}
+
+// buildYourView alone can't build "queued"/"offered" (it only knows a
+// role/timestamp, not the queue's actual contents) -- those two are
+// overridden here with the real position/size/remainingMs from ws.ts's
+// queue accessors.
+function buildYou(conn: Connection, now: number): YourView {
+  if (conn.role === "queued") {
+    const position = queuePositionOf(conn.playerId);
+    if (position) return { role: "queued", ...position };
+  }
+  if (conn.role === "offered") {
+    const remainingMs = offerRemainingMs(conn.playerId, now);
+    if (remainingMs !== null) return { role: "offered", remainingMs };
+  }
+  return buildYourView(conn.role, conn.roleChangedAt, now);
 }
 
 function finalizeRun(active: { playerId: number }[]): void {
