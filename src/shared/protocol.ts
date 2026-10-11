@@ -21,7 +21,30 @@ export interface InputMessage {
   y: number;
 }
 
-export type ClientMessage = HelloMessage | InputMessage;
+// planning.md section 7: a spectator opts into the FIFO queue explicitly
+// (not automatically) -- this is also how a declined/expired offer's
+// holder re-enters, landing at the back of the queue.
+export interface RequestJoinMessage {
+  t: "requestJoin";
+}
+
+// Accept/decline the current offer this connection holds (StateMessage.you
+// role "offered"). Declining has the same effect as letting the 5s claim
+// window expire -- the entry is dropped, not requeued.
+export interface AcceptOfferMessage {
+  t: "acceptOffer";
+}
+
+export interface DeclineOfferMessage {
+  t: "declineOffer";
+}
+
+export type ClientMessage =
+  | HelloMessage
+  | InputMessage
+  | RequestJoinMessage
+  | AcceptOfferMessage
+  | DeclineOfferMessage;
 
 export interface WelcomeMessage {
   t: "welcome";
