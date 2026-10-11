@@ -61,6 +61,9 @@ export interface PlayerView {
 export interface StateMessage {
   t: "state";
   status: "waiting" | "running" | "gameover";
+  // True when "waiting" means a run is paused (preserved, resumable) rather
+  // than never having started -- the two look different on screen.
+  pausedWithRun: boolean;
   activeCount: number;
   players: PlayerView[];
   snake: { path: [number, number][] };

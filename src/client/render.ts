@@ -2,22 +2,31 @@ import type { ServerMessage } from "../shared/protocol.js";
 
 type StateMessage = Extract<ServerMessage, { t: "state" }>;
 
+// A paused run (status "waiting" with a preserved run) hides the snake
+// rather than showing it frozen mid-board; only the fresh, never-started
+// waiting state still shows it at its starting position.
+export function shouldDrawSnake(status: StateMessage["status"], pausedWithRun: boolean): boolean {
+  return !(status === "waiting" && pausedWithRun);
+}
+
 export function draw(ctx: CanvasRenderingContext2D, width: number, height: number, state: StateMessage): void {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#0b1021";
   ctx.fillRect(0, 0, width, height);
 
-  ctx.strokeStyle = "#6ee7b7";
-  ctx.lineWidth = 6;
-  ctx.lineJoin = "round";
-  ctx.beginPath();
-  state.snake.path.forEach(([x, y], i) => {
-    const px = x * width;
-    const py = y * height;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  });
-  ctx.stroke();
+  if (shouldDrawSnake(state.status, state.pausedWithRun)) {
+    ctx.strokeStyle = "#6ee7b7";
+    ctx.lineWidth = 6;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    state.snake.path.forEach(([x, y], i) => {
+      const px = x * width;
+      const py = y * height;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+  }
 
   if (state.food) {
     ctx.fillStyle = "#fbbf24";

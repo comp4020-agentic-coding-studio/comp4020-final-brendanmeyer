@@ -22,6 +22,7 @@ function broadcast(): void {
   const message: ServerMessage = {
     t: "state",
     status: state.status,
+    pausedWithRun: state.pausedWithRun,
     activeCount: n,
     players: active.map((c) => ({ id: c.playerId, name: c.name, x: c.lastInput.x, y: c.lastInput.y })),
     snake: { path: state.snake.map((p): [number, number] => [p.x, p.y]) },
