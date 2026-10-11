@@ -1,8 +1,9 @@
 import { connect, getStoredToken } from "./net.js";
 import { collectEntry } from "./entry.js";
 import { trackInput } from "./input.js";
-import { draw } from "./render.js";
+import { draw, drawGhost } from "./render.js";
 import { setupFullscreen } from "./fullscreen.js";
+import { createGhostState, currentGhostFrame, refreshGhost } from "./ghost.js";
 import type { ServerMessage } from "../shared/protocol.js";
 
 type StateMessage = Extract<ServerMessage, { t: "state" }>;
@@ -41,6 +42,13 @@ window.addEventListener("resize", resize);
 resize();
 
 let latestState: StateMessage | null = null;
+let previousStatus: StateMessage["status"] | null = null;
+
+const ghostState = createGhostState();
+void refreshGhost(ghostState);
+window.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() === "g") ghostState.enabled = !ghostState.enabled;
+});
 
 function updateQueueUi(you: StateMessage["you"]): void {
   requestJoinBtn.hidden = you.role !== "spectator";
@@ -69,6 +77,10 @@ async function start(): Promise<void> {
         `Score: ${state.rawScore} · Collective: ${state.collectiveScore} ` +
         `(×${state.multiplier.toFixed(2)}) · Players: ${state.activeCount}`;
       updateQueueUi(state.you);
+      // A run just ended -- it might have been a new record, so refresh
+      // the ghost rather than waiting indefinitely for a stale one.
+      if (state.status === "gameover" && previousStatus !== "gameover") void refreshGhost(ghostState);
+      previousStatus = state.status;
     },
     // A tab sharing this browser's localStorage already resumed this token --
     // this one isn't playing until the visitor confirms taking over.
@@ -100,6 +112,8 @@ void start();
 
 function frame(): void {
   if (latestState) draw(ctx, canvas.width, canvas.height, latestState);
+  const ghostFrame = currentGhostFrame(ghostState, performance.now());
+  if (ghostFrame) drawGhost(ctx, canvas.width, canvas.height, ghostFrame);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

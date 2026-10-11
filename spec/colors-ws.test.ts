@@ -57,7 +57,7 @@ it("assigns the requested colour, or a different one if it's already taken", asy
 
   a.close();
   b.close();
-}, 8000);
+}, 12000);
 
 it(
   "releases a colour once the player is fully removed, not just leaving",

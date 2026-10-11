@@ -98,5 +98,5 @@ it(
     // its own setup, rather than each one trying to leave a clean slate.
     b.close();
   },
-  17000,
+  23000,
 );

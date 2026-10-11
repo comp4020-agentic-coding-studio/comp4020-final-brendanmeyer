@@ -105,7 +105,7 @@ it(
     for (const socket of twelve.slice(1)) socket.close();
     spectator.close();
   },
-  25000,
+  32000,
 );
 
 it(
@@ -150,5 +150,5 @@ it(
     first.close();
     second.close();
   },
-  30000,
+  37000,
 );

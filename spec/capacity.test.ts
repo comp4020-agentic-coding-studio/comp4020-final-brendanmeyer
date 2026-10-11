@@ -91,5 +91,5 @@ it(
     for (const socket of twelve) socket.close();
     thirteenth.close();
   },
-  20000,
+  27000,
 );

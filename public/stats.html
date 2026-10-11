@@ -16,6 +16,9 @@
       table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
       th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid #1f2937; }
       th { color: #9ca3af; font-weight: normal; }
+      tbody tr { cursor: pointer; }
+      tbody tr:hover { background: #111827; }
+      #replay { width: 100%; max-width: 30rem; aspect-ratio: 1; display: none; background: #0b1021; border: 1px solid #1f2937; margin-top: 0.5rem; }
     </style>
   </head>
   <body>
@@ -28,6 +31,8 @@
       <h2>Global stats</h2>
       <dl id="stats"></dl>
       <h2>Record runs</h2>
+      <p style="color: #9ca3af; font-size: 0.85rem;">Click a run to replay it.</p>
+      <canvas id="replay"></canvas>
       <table>
         <thead>
           <tr><th>Collective score</th><th>Raw score</th><th>Peak players</th><th>When</th></tr>

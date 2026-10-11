@@ -67,11 +67,19 @@ export interface GhostFrame {
   players: { x: number; y: number; color: number }[];
 }
 
-// The current record run, replayed at reduced opacity (planning.md
-// section 21) -- drawn on top of the live frame, visual only. Call after
-// draw() so it isn't cleared by draw()'s own clearRect.
-export function drawGhost(ctx: CanvasRenderingContext2D, width: number, height: number, frame: GhostFrame): void {
-  ctx.globalAlpha = 0.25;
+// The current record run, replayed at reduced opacity by default
+// (planning.md section 21) -- drawn on top of the live frame during play,
+// visual only; call after draw() so it isn't cleared by draw()'s own
+// clearRect. The stats page reuses this at full opacity (alpha: 1) as a
+// standalone replay viewer rather than an overlay.
+export function drawGhost(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  frame: GhostFrame,
+  alpha = 0.25,
+): void {
+  ctx.globalAlpha = alpha;
   ctx.strokeStyle = "#6ee7b7";
   ctx.lineWidth = 6;
   ctx.lineJoin = "round";
