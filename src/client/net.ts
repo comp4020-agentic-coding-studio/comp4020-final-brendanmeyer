@@ -7,6 +7,7 @@ import type { ClientMessage, ServerMessage } from "../shared/protocol.js";
 
 const TOKEN_KEY = "collective-snake-token";
 const COLOR_KEY = "collective-snake-color";
+const NAME_KEY = "collective-snake-name";
 
 export function getStoredToken(): string | undefined {
   try {
@@ -38,6 +39,26 @@ function storeColor(color: number): void {
     localStorage.setItem(COLOR_KEY, String(color));
   } catch {
     // losing the preference just means picking fresh next time
+  }
+}
+
+// The name actually in effect (resumed or newly claimed), not whatever was
+// last typed -- a returning visitor's token always wins over a re-typed
+// name (see ws.ts's handleHello), so this is what the entry screen should
+// show back to them, not a stale or ignored guess.
+export function getStoredName(): string | undefined {
+  try {
+    return localStorage.getItem(NAME_KEY) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function storeName(name: string): void {
+  try {
+    localStorage.setItem(NAME_KEY, name);
+  } catch {
+    // losing it just means the entry screen starts blank next time
   }
 }
 
@@ -76,10 +97,12 @@ export function connect(name: string, color: number, handlers: NetHandlers): Net
     if (msg.t === "welcome") {
       storeToken(msg.token);
       storeColor(msg.color);
+      storeName(msg.name);
       handlers.onIdentity(msg.name, msg.color);
     } else if (msg.t === "nameInvalid") {
       storeToken(msg.token);
       storeColor(msg.color);
+      storeName(msg.assigned);
       handlers.onIdentity(msg.assigned, msg.color);
     } else if (msg.t === "alreadyConnected") {
       handlers.onAlreadyConnected(msg.name);

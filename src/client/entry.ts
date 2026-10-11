@@ -4,7 +4,7 @@
 // (claimName/reserve), this just collects a visitor's preference.
 
 import { PLAYER_COLORS } from "../shared/palette.js";
-import { getStoredColor } from "./net.js";
+import { getStoredColor, getStoredName } from "./net.js";
 
 export interface EntryResult {
   name: string;
@@ -21,6 +21,7 @@ export interface EntryElements {
 export function collectEntry(elements: EntryElements): Promise<EntryResult> {
   const { overlay, nameInput, swatchContainer, playButton } = elements;
   let selected = getStoredColor() ?? 0;
+  nameInput.value = getStoredName() ?? "";
 
   const buttons = PLAYER_COLORS.map((hex, index) => {
     const button = document.createElement("button");
