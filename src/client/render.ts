@@ -37,7 +37,12 @@ export function draw(ctx: CanvasRenderingContext2D, width: number, height: numbe
   }
 
   if (state.status === "waiting") {
-    overlayText(ctx, width, height, "Waiting for a second player — open this page in another browser window");
+    overlayText(
+      ctx,
+      width,
+      height,
+      "Waiting for a second player — open this page in another browser, or a private/incognito window",
+    );
   } else if (state.status === "gameover") {
     overlayText(ctx, width, height, "Run over — a new one starts shortly");
   }
