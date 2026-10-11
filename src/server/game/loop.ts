@@ -17,6 +17,8 @@ import { freshState, GAME_OVER_RESET_MS, getState, setState, SNAKE_SPEED, TICK_M
 
 let runStartedAt = Date.now();
 let peakPlayersThisRun = 0;
+let foodEventsThisRun = 0;
+let activeMsThisRun = 0;
 
 // A connection's own `you` differs per recipient (its role, its own
 // countdown), so unlike every other field this can't be computed once and
@@ -79,6 +81,8 @@ function finalizeRun(active: { playerId: number }[]): void {
     collectiveScore: state.collectiveScore,
     peakPlayers: peakPlayersThisRun,
     playerIds: active.map((c) => c.playerId),
+    foodEvents: foodEventsThisRun,
+    activeMs: activeMsThisRun,
   });
   setState({ ...state, status: "gameover" });
   setTimeout(() => {
@@ -118,8 +122,11 @@ function tick(): void {
     setState(state);
     runStartedAt = Date.now();
     peakPlayersThisRun = 0;
+    foodEventsThisRun = 0;
+    activeMsThisRun = 0;
   }
   peakPlayersThisRun = Math.max(peakPlayersThisRun, n);
+  activeMsThisRun += TICK_MS;
 
   const target = centroid(active.map((c) => c.lastInput));
   const head = state.snake[0];
@@ -134,6 +141,7 @@ function tick(): void {
 
   const grow = eatsFood(newHead, state.food);
   if (grow) {
+    foodEventsThisRun += 1;
     state = {
       ...state,
       rawScore: state.rawScore + 100,

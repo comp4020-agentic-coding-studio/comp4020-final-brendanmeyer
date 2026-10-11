@@ -4,6 +4,7 @@
 
 import { randomUUID } from "node:crypto";
 import { db } from "./index.ts";
+import { isNewRecord, sortRecords } from "../../shared/leaderboard.ts";
 
 export interface Player {
   id: number;
@@ -71,12 +72,29 @@ export interface FinishedRun {
   collectiveScore: number;
   peakPlayers: number;
   playerIds: number[];
+  foodEvents: number;
+  activeMs: number;
 }
 
-export function recordRun(run: FinishedRun): number {
+export interface RecordRunResult {
+  runId: number;
+  // Strictly higher than the prior best (planning.md section 19) -- a tie
+  // is never a new record, checked here before inserting so this run's own
+  // score can't count as its own "previous best".
+  isRecord: boolean;
+}
+
+export function recordRun(run: FinishedRun): RecordRunResult {
+  const previousBest = (
+    db.prepare("SELECT MAX(collective_score) AS best FROM runs WHERE ended_at IS NOT NULL").get() as {
+      best: number | null;
+    }
+  ).best;
+  const isRecord = isNewRecord(run.collectiveScore, previousBest);
+
   const insertRun = db.prepare(
-    `INSERT INTO runs (started_at, ended_at, raw_score, collective_score, peak_players)
-     VALUES (?, ?, ?, ?, ?)`,
+    `INSERT INTO runs (started_at, ended_at, raw_score, collective_score, peak_players, food_events, active_ms, is_record)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const info = insertRun.run(
     run.startedAt,
@@ -84,6 +102,9 @@ export function recordRun(run: FinishedRun): number {
     run.rawScore,
     run.collectiveScore,
     run.peakPlayers,
+    run.foodEvents,
+    run.activeMs,
+    isRecord ? 1 : 0,
   );
   const runId = Number(info.lastInsertRowid);
 
@@ -91,7 +112,59 @@ export function recordRun(run: FinishedRun): number {
   for (const playerId of run.playerIds) {
     linkPlayer.run(runId, playerId);
   }
-  return runId;
+  return { runId, isRecord };
+}
+
+export interface GlobalStats {
+  totalRuns: number;
+  totalFoodCollected: number;
+  totalUniquePlayers: number;
+  totalPlayTimeMs: number;
+  largestActiveGroup: number;
+  recordCollectiveScore: number;
+}
+
+// planning.md section 22: the public global-stats view.
+export function getGlobalStats(): GlobalStats {
+  const totals = db
+    .prepare(
+      `SELECT
+         COUNT(*) AS totalRuns,
+         COALESCE(SUM(food_events), 0) AS totalFoodCollected,
+         COALESCE(SUM(active_ms), 0) AS totalPlayTimeMs,
+         COALESCE(MAX(peak_players), 0) AS largestActiveGroup,
+         COALESCE(MAX(collective_score), 0) AS recordCollectiveScore
+       FROM runs WHERE ended_at IS NOT NULL`,
+    )
+    .get() as Omit<GlobalStats, "totalUniquePlayers">;
+
+  const totalUniquePlayers = (
+    db.prepare("SELECT COUNT(DISTINCT player_id) AS n FROM run_players").get() as { n: number }
+  ).n;
+
+  return { ...totals, totalUniquePlayers };
+}
+
+export interface RecordRunRow {
+  runId: number;
+  collectiveScore: number;
+  rawScore: number;
+  endedAt: number;
+  peakPlayers: number;
+}
+
+// planning.md section 19/21: every run that was a record when it finished,
+// in leaderboard order -- this *is* "the record run" (the top entry) and
+// "all historical record runs" (the rest), no separate records table.
+export function listRecordRuns(): RecordRunRow[] {
+  const rows = db
+    .prepare(
+      `SELECT id AS runId, collective_score AS collectiveScore, raw_score AS rawScore,
+              ended_at AS endedAt, peak_players AS peakPlayers
+       FROM runs WHERE is_record = 1`,
+    )
+    .all() as unknown as RecordRunRow[];
+  return sortRecords(rows);
 }
 
 export interface Summary {

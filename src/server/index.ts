@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { renderMarkdown } from "./markdown.ts";
 import { serveStatic } from "./static.ts";
-import { getSummary } from "./db/repo.ts";
+import { getGlobalStats, getSummary, listRecordRuns } from "./db/repo.ts";
 import { attachWebSocketServer } from "./ws.ts";
 import { startGameLoop } from "./game/loop.ts";
 
@@ -36,6 +36,18 @@ const server = createServer((req, res) => {
     const summary = getSummary(token);
     res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
     res.end(JSON.stringify(summary));
+    return;
+  }
+
+  if (url.pathname === "/api/stats") {
+    res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(getGlobalStats()));
+    return;
+  }
+
+  if (url.pathname === "/api/records") {
+    res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(listRecordRuns()));
     return;
   }
 
