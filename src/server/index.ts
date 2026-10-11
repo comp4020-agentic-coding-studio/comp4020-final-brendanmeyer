@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { renderMarkdown } from "./markdown.ts";
 import { serveStatic } from "./static.ts";
-import { getGlobalStats, getSummary, listRecordRuns } from "./db/repo.ts";
+import { getGlobalStats, getReplay, getSummary, listRecordRuns } from "./db/repo.ts";
 import { attachWebSocketServer } from "./ws.ts";
 import { startGameLoop } from "./game/loop.ts";
 
@@ -48,6 +48,14 @@ const server = createServer((req, res) => {
   if (url.pathname === "/api/records") {
     res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
     res.end(JSON.stringify(listRecordRuns()));
+    return;
+  }
+
+  const replayMatch = /^\/api\/records\/(\d+)\/replay$/.exec(url.pathname);
+  if (replayMatch) {
+    const runId = Number(replayMatch[1]);
+    res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(getReplay(runId)));
     return;
   }
 

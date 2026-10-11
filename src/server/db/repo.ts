@@ -5,6 +5,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "./index.ts";
 import { isNewRecord, sortRecords } from "../../shared/leaderboard.ts";
+import type { ReplaySample } from "../game/replay.ts";
 
 export interface Player {
   id: number;
@@ -165,6 +166,47 @@ export function listRecordRuns(): RecordRunRow[] {
     )
     .all() as unknown as RecordRunRow[];
   return sortRecords(rows);
+}
+
+// Only ever called for a run db/repo.ts's own recordRun() already said was
+// a record (planning.md section 21) -- every other run's buffered samples
+// are just discarded, never reaching here.
+export function saveReplaySamples(runId: number, samples: ReplaySample[]): void {
+  const insert = db.prepare(
+    `INSERT INTO run_samples (run_id, seq, elapsed_ms, snake_path, players, raw_score, collective_score, active_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  samples.forEach((sample, seq) => {
+    insert.run(
+      runId,
+      seq,
+      sample.elapsedMs,
+      JSON.stringify(sample.snakePath),
+      JSON.stringify(sample.players),
+      sample.rawScore,
+      sample.collectiveScore,
+      sample.activeCount,
+    );
+  });
+}
+
+export function getReplay(runId: number): ReplaySample[] {
+  const rows = db
+    .prepare(
+      `SELECT elapsed_ms AS elapsedMs, snake_path AS snakePath, players,
+              raw_score AS rawScore, collective_score AS collectiveScore, active_count AS activeCount
+       FROM run_samples WHERE run_id = ? ORDER BY seq ASC`,
+    )
+    .all(runId) as unknown as { elapsedMs: number; snakePath: string; players: string; rawScore: number; collectiveScore: number; activeCount: number }[];
+
+  return rows.map((row) => ({
+    elapsedMs: row.elapsedMs,
+    snakePath: JSON.parse(row.snakePath),
+    players: JSON.parse(row.players),
+    rawScore: row.rawScore,
+    collectiveScore: row.collectiveScore,
+    activeCount: row.activeCount,
+  }));
 }
 
 export interface Summary {

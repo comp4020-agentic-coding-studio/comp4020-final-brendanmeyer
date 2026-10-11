@@ -5,13 +5,14 @@
 // cursor on screen but don't contribute, per planning.md sections 4 and 5.
 
 import { connections, offerRemainingMs, queuePositionOf, sweep, type Connection } from "../ws.ts";
-import { recordRun } from "../db/repo.ts";
+import { recordRun, saveReplaySamples } from "../db/repo.ts";
 import { foodEventScore, multiplier } from "../../shared/scoring.ts";
 import type { CursorRole } from "./roles.ts";
 import { buildYourView, countsTowardSimulation, hasCursor } from "./roles.ts";
 import type { ServerMessage, StateMessage, YourView } from "../../shared/protocol.ts";
 import { centroid } from "./centroid.ts";
 import { eatsFood, spawnFood } from "./food.ts";
+import { createReplayBuffer, maybeSample, takeSamples } from "./replay.ts";
 import { advance, hitsSelf, hitsWall, steer } from "./snake.ts";
 import { freshState, GAME_OVER_RESET_MS, getState, setState, SNAKE_SPEED, TICK_MS } from "./state.ts";
 
@@ -19,6 +20,7 @@ let runStartedAt = Date.now();
 let peakPlayersThisRun = 0;
 let foodEventsThisRun = 0;
 let activeMsThisRun = 0;
+let replayBuffer = createReplayBuffer();
 
 // A connection's own `you` differs per recipient (its role, its own
 // countdown), so unlike every other field this can't be computed once and
@@ -73,9 +75,9 @@ function buildYou(conn: Connection, now: number): YourView {
   return buildYourView(conn.role, conn.roleChangedAt, now);
 }
 
-function finalizeRun(active: { playerId: number }[]): void {
+function finalizeRun(active: Connection[]): void {
   const state = getState();
-  recordRun({
+  const { runId, isRecord } = recordRun({
     startedAt: runStartedAt,
     endedAt: Date.now(),
     rawScore: state.rawScore,
@@ -85,6 +87,8 @@ function finalizeRun(active: { playerId: number }[]): void {
     foodEvents: foodEventsThisRun,
     activeMs: activeMsThisRun,
   });
+  const samples = takeSamples(replayBuffer);
+  if (isRecord) saveReplaySamples(runId, samples);
   setState({ ...state, status: "gameover" });
   setTimeout(() => {
     setState(freshState());
@@ -125,6 +129,7 @@ function tick(): void {
     peakPlayersThisRun = 0;
     foodEventsThisRun = 0;
     activeMsThisRun = 0;
+    replayBuffer = createReplayBuffer();
   }
   peakPlayersThisRun = Math.max(peakPlayersThisRun, n);
   activeMsThisRun += TICK_MS;
@@ -154,6 +159,14 @@ function tick(): void {
   const food = grow ? spawnFood(snake) : state.food;
   state = { ...state, snake, direction, food };
   setState(state);
+
+  maybeSample(replayBuffer, Date.now(), runStartedAt, {
+    snakePath: state.snake.map((p): [number, number] => [p.x, p.y]),
+    players: active.map((c) => ({ id: c.playerId, name: c.name, x: c.lastInput.x, y: c.lastInput.y, color: c.colorIndex ?? 0 })),
+    rawScore: state.rawScore,
+    collectiveScore: state.collectiveScore,
+    activeCount: n,
+  });
 
   broadcast();
 }
