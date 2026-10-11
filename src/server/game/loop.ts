@@ -1,11 +1,14 @@
 // The 11-step tick order from planning.md section 15, simplified to this
-// week's scope: active set -> centroid -> steer -> collide -> score ->
-// spawn -> broadcast. No lobby/queue yet, so "active" is simply every
-// socket that's completed the handshake.
+// week's scope: sweep (role timeouts) -> active set -> centroid -> steer ->
+// collide -> score -> spawn -> broadcast. "Active" for simulation purposes
+// is specifically role === "active" -- introducing/leaving/resuming have a
+// cursor on screen but don't contribute, per planning.md sections 4 and 5.
 
-import { connections } from "../ws.ts";
+import { connections, sweep } from "../ws.ts";
 import { recordRun } from "../db/repo.ts";
 import { foodEventScore, multiplier } from "../../shared/scoring.ts";
+import type { CursorRole } from "./roles.ts";
+import { countsTowardSimulation, hasCursor } from "./roles.ts";
 import type { ServerMessage } from "../../shared/protocol.ts";
 import { centroid } from "./centroid.ts";
 import { eatsFood, spawnFood } from "./food.ts";
@@ -17,22 +20,28 @@ let runStartedAt = Date.now();
 let peakPlayersThisRun = 0;
 
 function broadcast(): void {
-  const active = [...connections.values()];
-  const n = active.length;
+  const withCursor = [...connections.values()].filter((c) => hasCursor(c.role));
+  const activeCount = withCursor.filter((c) => c.role === "active").length;
   const message: ServerMessage = {
     t: "state",
     status: state.status,
     pausedWithRun: state.pausedWithRun,
-    activeCount: n,
-    players: active.map((c) => ({ id: c.playerId, name: c.name, x: c.lastInput.x, y: c.lastInput.y })),
+    activeCount,
+    players: withCursor.map((c) => ({
+      id: c.playerId,
+      name: c.name,
+      x: c.lastInput.x,
+      y: c.lastInput.y,
+      state: c.role as CursorRole,
+    })),
     snake: { path: state.snake.map((p): [number, number] => [p.x, p.y]) },
     food: state.food,
     rawScore: state.rawScore,
     collectiveScore: state.collectiveScore,
-    multiplier: n >= 2 ? multiplier(Math.min(n, 12)) : 1,
+    multiplier: activeCount >= 2 ? multiplier(Math.min(activeCount, 12)) : 1,
   };
   const payload = JSON.stringify(message);
-  for (const conn of active) {
+  for (const conn of connections.values()) {
     if (conn.socket.readyState === conn.socket.OPEN) conn.socket.send(payload);
   }
 }
@@ -53,12 +62,14 @@ function finalizeRun(active: { playerId: number }[]): void {
 }
 
 function tick(): void {
+  sweep(Date.now());
+
   if (state.status === "gameover") {
     broadcast();
     return; // waiting on the reset timer set by finalizeRun
   }
 
-  const active = [...connections.values()];
+  const active = [...connections.values()].filter((c) => countsTowardSimulation(c.role));
   const n = active.length;
 
   if (n < 2) {

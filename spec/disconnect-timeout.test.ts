@@ -18,14 +18,25 @@ function wsUrl(path: string): string {
   return new URL(path, baseUrl).toString().replace(/^http/, "ws");
 }
 
-function connect(name: string): Promise<WebSocket> {
+// An auto-generated pseudonym (empty name), not a fixed literal one -- a
+// fixed name collides with the players table's name_lower uniqueness on any
+// second run against the same long-lived dev server, which a hardcoded name
+// here hit directly.
+function connect(): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(wsUrl("/ws"));
     socket.once("open", () => {
-      const hello: ClientMessage = { t: "hello", name };
+      const hello: ClientMessage = { t: "hello", name: "" };
       socket.send(JSON.stringify(hello));
       resolve(socket);
     });
+    socket.once("error", reject);
+  });
+}
+
+function nextMessage(socket: WebSocket): Promise<ServerMessage> {
+  return new Promise((resolve, reject) => {
+    socket.once("message", (data) => resolve(JSON.parse(data.toString())));
     socket.once("error", reject);
   });
 }
@@ -47,26 +58,31 @@ function nextStateWhere(socket: WebSocket, predicate: (s: StateMessage) => boole
   });
 }
 
-function findPlayer(msg: StateMessage, name: string) {
-  return msg.players.find((p) => p.name === name);
+function findPlayer(msg: StateMessage, playerId: number) {
+  return msg.players.find((p) => p.id === playerId);
 }
 
 it(
   "a clean close starts the leaving flash immediately, then removes the player",
   async () => {
-    const a = await connect("discA");
-    const b = await connect("discB");
+    const a = await connect();
+    const welcomeA = await nextMessage(a);
+    if (welcomeA.t !== "welcome" && welcomeA.t !== "nameInvalid") throw new Error("unreachable");
+    const aId = welcomeA.playerId;
+
+    const b = await connect();
+    await nextMessage(b); // welcome/nameInvalid
     await nextStateWhere(b, (s) => s.activeCount === 2, 5000);
 
     const t0 = Date.now();
     a.close();
 
-    const leaving = await nextStateWhere(b, (s) => findPlayer(s, "discA")?.state === "leaving", 1500);
+    const leaving = await nextStateWhere(b, (s) => findPlayer(s, aId)?.state === "leaving", 1500);
     expect(Date.now() - t0).toBeLessThan(500); // nowhere near the 3s silent-drop timeout
     expect(leaving.activeCount).toBe(1); // stopped counting immediately, not after the flash
 
-    const removed = await nextStateWhere(b, (s) => findPlayer(s, "discA") === undefined, 3000);
-    expect(findPlayer(removed, "discA")).toBeUndefined();
+    const removed = await nextStateWhere(b, (s) => findPlayer(s, aId) === undefined, 3000);
+    expect(findPlayer(removed, aId)).toBeUndefined();
 
     b.close();
   },

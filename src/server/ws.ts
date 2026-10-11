@@ -7,12 +7,10 @@ import type { Duplex } from "node:stream";
 import { WebSocketServer, type WebSocket } from "ws";
 import type { ClientMessage, ServerMessage } from "../shared/protocol.ts";
 import { claimName, findPlayerByToken } from "./db/repo.ts";
+import { hasCursor, nextRole, type Role } from "./game/roles.ts";
 import type { Vec2 } from "./game/state.ts";
 
-// The seven states a connection can be in. Only "active" | "introducing" |
-// "leaving" | "resuming" ever appear in a PlayerView -- spectators, queued,
-// and offered visitors are never rendered as players.
-export type Role = "active" | "introducing" | "leaving" | "resuming" | "spectator" | "queued" | "offered";
+export type { Role } from "./game/roles.ts";
 
 export interface Connection {
   socket: WebSocket;
@@ -38,6 +36,29 @@ function findConnectionByPlayerId(playerId: number): Connection | undefined {
 function clamp01(n: number): number {
   if (Number.isNaN(n)) return 0.5;
   return Math.max(0, Math.min(1, n));
+}
+
+function markActivity(conn: Connection): void {
+  conn.lastActivityAt = Date.now();
+}
+
+// Applies planning.md section 5's two timing rules to every live
+// connection: no activity for 3 seconds starts the leaving flash; the
+// flash lasts 2 seconds before full removal. Called once per tick from
+// loop.ts, ahead of the simulation step, so a just-disconnected player
+// stops contributing to the centroid/multiplier the same tick it's
+// noticed.
+export function sweep(now: number): void {
+  for (const conn of [...connections.values()]) {
+    const decision = nextRole(conn.role, conn.roleChangedAt, conn.lastActivityAt, now);
+    if (decision === "removed") {
+      connections.delete(conn.socket);
+      if (conn.socket.readyState === conn.socket.OPEN) conn.socket.close();
+    } else if (decision !== null) {
+      conn.role = decision;
+      conn.roleChangedAt = now;
+    }
+  }
 }
 
 function send(socket: WebSocket, message: ServerMessage): void {
@@ -137,7 +158,10 @@ function handleMessage(socket: WebSocket, raw: string): void {
   }
   if (msg.t === "input") {
     const conn = connections.get(socket);
-    if (conn) conn.lastInput = { x: clamp01(msg.x), y: clamp01(msg.y) };
+    if (conn) {
+      conn.lastInput = { x: clamp01(msg.x), y: clamp01(msg.y) };
+      markActivity(conn);
+    }
   }
 }
 
@@ -156,7 +180,30 @@ export function attachWebSocketServer(server: Server): void {
   });
 
   wss.on("connection", (socket: WebSocket) => {
+    // A pong keeps a genuinely idle-but-connected player (not moving their
+    // cursor) from ever going stale -- only a connection that stops
+    // answering pings at all can time out.
+    const heartbeat = setInterval(() => {
+      if (socket.readyState === socket.OPEN) socket.ping();
+    }, 1000);
+
+    socket.on("pong", () => {
+      const conn = connections.get(socket);
+      if (conn) markActivity(conn);
+    });
+
     socket.on("message", (data) => handleMessage(socket, data.toString()));
-    socket.on("close", () => connections.delete(socket));
+
+    socket.on("close", () => {
+      clearInterval(heartbeat);
+      const conn = connections.get(socket);
+      if (!conn) return; // already removed (e.g. a confirmed takeover's delete-before-close)
+      if (hasCursor(conn.role)) {
+        conn.role = "leaving";
+        conn.roleChangedAt = Date.now();
+      } else {
+        connections.delete(socket);
+      }
+    });
   });
 }

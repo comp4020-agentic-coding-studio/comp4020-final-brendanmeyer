@@ -1,0 +1,55 @@
+// The seven states a connection can be in (planning.md sections 2, 4, 5, 6,
+// 7), the timing constants those sections name, and the pure decision
+// sweep() applies every tick -- kept separate from ws.ts's connection
+// registry so the timing logic is unit-testable without a real socket or
+// real elapsed time (see spec/roles.test.ts).
+
+export type Role = "active" | "introducing" | "leaving" | "resuming" | "spectator" | "queued" | "offered";
+
+export const MAX_ACTIVE = 12;
+export const INTRO_MS = 2000;
+export const LEAVE_FLASH_MS = 2000;
+export const DISCONNECT_TIMEOUT_MS = 3000;
+export const RESUME_MS = 5000;
+export const OFFER_MS = 5000;
+
+export type CursorRole = "active" | "introducing" | "leaving" | "resuming";
+
+// Only these four ever appear in a PlayerView -- spectators, queued, and
+// offered visitors are never rendered as players. A type guard so a
+// filtered list narrows to CursorRole without a cast.
+export function hasCursor(role: Role): role is CursorRole {
+  return role === "active" || role === "introducing" || role === "leaving" || role === "resuming";
+}
+
+// Counts toward the simulation (centroid, collisions, the multiplier) --
+// only a fully active player, per planning.md's "immediately stop
+// contributing" on disconnect and "do not affect the centroid" while
+// introducing/resuming.
+export function countsTowardSimulation(role: Role): boolean {
+  return role === "active";
+}
+
+// Occupies one of the 12 active slots, including the ones mid-transition.
+export function occupiesSlot(role: Role): boolean {
+  return hasCursor(role) || role === "offered";
+}
+
+export type RoleDecision = Role | "removed" | null;
+
+// What a connection's role should become given how long it's been idle
+// (lastActivityAt) or in its current role (roleChangedAt), given the
+// current time -- null means no change. Pure and real-time-independent so
+// the exact 3s/2s thresholds are testable without waiting for them.
+export function nextRole(role: Role, roleChangedAt: number, lastActivityAt: number, now: number): RoleDecision {
+  if (
+    (role === "active" || role === "introducing" || role === "resuming") &&
+    now - lastActivityAt > DISCONNECT_TIMEOUT_MS
+  ) {
+    return "leaving";
+  }
+  if (role === "leaving" && now - roleChangedAt > LEAVE_FLASH_MS) {
+    return "removed";
+  }
+  return null;
+}

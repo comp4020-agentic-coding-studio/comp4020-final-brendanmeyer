@@ -56,6 +56,9 @@ export interface PlayerView {
   name: string;
   x: number;
   y: number;
+  // Only these four roles ever appear here -- spectators, queued, and
+  // offered visitors have no cursor to render.
+  state: "active" | "introducing" | "leaving" | "resuming";
 }
 
 export interface StateMessage {
