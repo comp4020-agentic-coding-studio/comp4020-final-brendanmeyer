@@ -13,13 +13,13 @@ import type { ServerMessage } from "../../shared/protocol.ts";
 import { centroid } from "./centroid.ts";
 import { eatsFood, spawnFood } from "./food.ts";
 import { advance, hitsSelf, hitsWall, steer } from "./snake.ts";
-import { freshState, GAME_OVER_RESET_MS, SNAKE_SPEED, TICK_MS, type GameState } from "./state.ts";
+import { freshState, GAME_OVER_RESET_MS, getState, setState, SNAKE_SPEED, TICK_MS } from "./state.ts";
 
-let state: GameState = freshState();
 let runStartedAt = Date.now();
 let peakPlayersThisRun = 0;
 
 function broadcast(): void {
+  const state = getState();
   const withCursor = [...connections.values()].filter((c) => hasCursor(c.role));
   const activeCount = withCursor.filter((c) => c.role === "active").length;
   const message: ServerMessage = {
@@ -48,6 +48,7 @@ function broadcast(): void {
 }
 
 function finalizeRun(active: { playerId: number }[]): void {
+  const state = getState();
   recordRun({
     startedAt: runStartedAt,
     endedAt: Date.now(),
@@ -56,14 +57,16 @@ function finalizeRun(active: { playerId: number }[]): void {
     peakPlayers: peakPlayersThisRun,
     playerIds: active.map((c) => c.playerId),
   });
-  state = { ...state, status: "gameover" };
+  setState({ ...state, status: "gameover" });
   setTimeout(() => {
-    state = freshState();
+    setState(freshState());
   }, GAME_OVER_RESET_MS);
 }
 
 function tick(): void {
   sweep(Date.now());
+
+  let state = getState();
 
   if (state.status === "gameover") {
     broadcast();
@@ -74,7 +77,10 @@ function tick(): void {
   const n = active.length;
 
   if (n < 2) {
-    if (state.status === "running") state = { ...state, status: "waiting", pausedWithRun: true };
+    if (state.status === "running") {
+      state = { ...state, status: "waiting", pausedWithRun: true };
+      setState(state);
+    }
     broadcast();
     return;
   }
@@ -86,6 +92,7 @@ function tick(): void {
       food: state.food ?? spawnFood(state.snake),
       pausedWithRun: false,
     };
+    setState(state);
     runStartedAt = Date.now();
     peakPlayersThisRun = 0;
   }
@@ -114,6 +121,7 @@ function tick(): void {
   const snake = advance(state.snake, newHead, grow);
   const food = grow ? spawnFood(snake) : state.food;
   state = { ...state, snake, direction, food };
+  setState(state);
 
   broadcast();
 }

@@ -40,13 +40,24 @@ export type RoleDecision = Role | "removed" | null;
 // What a connection's role should become given how long it's been idle
 // (lastActivityAt) or in its current role (roleChangedAt), given the
 // current time -- null means no change. Pure and real-time-independent so
-// the exact 3s/2s thresholds are testable without waiting for them.
+// the exact thresholds are testable without waiting for them.
+//
+// Staleness is checked ahead of a countdown completing normally: the 3s
+// disconnect timeout is shorter than the 5s resume countdown, so a
+// resuming connection that goes silent should be treated as disconnected
+// rather than activated anyway once 5s happens to pass.
 export function nextRole(role: Role, roleChangedAt: number, lastActivityAt: number, now: number): RoleDecision {
   if (
     (role === "active" || role === "introducing" || role === "resuming") &&
     now - lastActivityAt > DISCONNECT_TIMEOUT_MS
   ) {
     return "leaving";
+  }
+  if (role === "introducing" && now - roleChangedAt > INTRO_MS) {
+    return "active";
+  }
+  if (role === "resuming" && now - roleChangedAt > RESUME_MS) {
+    return "active";
   }
   if (role === "leaving" && now - roleChangedAt > LEAVE_FLASH_MS) {
     return "removed";

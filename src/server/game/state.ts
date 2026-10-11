@@ -45,3 +45,18 @@ export function freshState(): GameState {
     pausedWithRun: false,
   };
 }
+
+// The single current GameState, owned here rather than inside loop.ts, so
+// ws.ts can read status/pausedWithRun (to decide a newly-registered
+// connection's role) without importing from loop.ts -- loop.ts already
+// imports from ws.ts (connections, sweep), and a module can't import both
+// ways.
+let current: GameState = freshState();
+
+export function getState(): GameState {
+  return current;
+}
+
+export function setState(next: GameState): void {
+  current = next;
+}

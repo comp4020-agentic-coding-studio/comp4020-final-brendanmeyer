@@ -4,9 +4,10 @@ import type { ClientMessage, ServerMessage } from "../src/shared/protocol.ts";
 
 // planning.md section 4: a player joining a game already running gets a
 // 2-second introduction -- their cursor is visible but doesn't affect the
-// centroid or the multiplier until it completes. Separately,
-// spec/two-players.test.ts already covers the case this must NOT apply to:
-// two fresh sessions starting a brand-new game still activate immediately.
+// centroid or the multiplier until it completes. The setup below tolerates
+// either a brand-new game (spec/two-players.test.ts covers that path
+// directly) or resuming one an earlier test file left paused
+// (planning.md section 7) -- either way two sessions reach active.
 const baseUrl = inject("baseUrl");
 
 function wsUrl(path: string): string {
@@ -65,8 +66,11 @@ it(
     await nextMessage(a);
     const b = await connect();
     await nextMessage(b);
-    // two fresh sessions -> running immediately, activeCount 2 (spec/two-players.test.ts)
-    await nextStateWhere(a, (s) => s.status === "running" && s.activeCount === 2, 5000);
+    // Generous timeout: normally two fresh sessions -> running immediately
+    // (spec/two-players.test.ts), but if an earlier test file left the
+    // shared game paused (planning.md section 7), these two instead resume
+    // it via the 5s countdown. Either way it reaches running with 2 active.
+    await nextStateWhere(a, (s) => s.status === "running" && s.activeCount === 2, 8000);
 
     const c = await connect();
     const welcomeC = await nextMessage(c);
@@ -79,9 +83,16 @@ it(
     const activated = await nextStateWhere(a, (s) => findPlayer(s, cId)?.state === "active", 3000);
     expect(activated.activeCount).toBe(3); // now counts
 
+    // Closing all three drops the game below 2 active players while it was
+    // running, which pauses it (planning.md section 5) rather than ending
+    // it. Left as-is for whichever test runs next -- that's why every WS
+    // test file that reaches "running" tolerates a possible resume
+    // countdown in its own setup, rather than each one trying to leave a
+    // clean slate behind (which just moves the same pause to whichever
+    // test runs after it).
     a.close();
     b.close();
     c.close();
   },
-  10000,
+  15000,
 );

@@ -72,7 +72,10 @@ it(
 
     const b = await connect();
     await nextMessage(b); // welcome/nameInvalid
-    await nextStateWhere(b, (s) => s.activeCount === 2, 5000);
+    // Generous timeout: tolerates resuming a run an earlier test file left
+    // paused (planning.md section 7's 5s countdown), same reasoning as
+    // spec/join-intro.test.ts's setup.
+    await nextStateWhere(b, (s) => s.activeCount === 2, 8000);
 
     const t0 = Date.now();
     a.close();
@@ -84,7 +87,13 @@ it(
     const removed = await nextStateWhere(b, (s) => findPlayer(s, aId) === undefined, 3000);
     expect(findPlayer(removed, aId)).toBeUndefined();
 
+    // a's disconnect drops the game below 2 active players while it was
+    // running, which pauses it (planning.md section 5) rather than ending
+    // it. Left as-is for whichever test runs next -- see
+    // spec/join-intro.test.ts's closing comment for why every WS test that
+    // reaches "running" tolerates a possible inherited resume countdown in
+    // its own setup, rather than each one trying to leave a clean slate.
     b.close();
   },
-  10000,
+  15000,
 );

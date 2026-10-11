@@ -37,13 +37,15 @@ describe("nextRole", () => {
   });
 
   it("completes the join introduction after 2 seconds, becoming active", () => {
-    expect(nextRole("introducing", 1000, 1000, 1000 + INTRO_MS - 1)).toBe(null);
-    expect(nextRole("introducing", 1000, 1000, 1000 + INTRO_MS + 1)).toBe("active");
+    // lastActivityAt tracks with `now` here -- still responsive throughout,
+    // so only the introduction's own countdown (roleChangedAt) is in play.
+    expect(nextRole("introducing", 1000, 1000 + INTRO_MS - 1, 1000 + INTRO_MS - 1)).toBe(null);
+    expect(nextRole("introducing", 1000, 1000 + INTRO_MS + 1, 1000 + INTRO_MS + 1)).toBe("active");
   });
 
   it("completes the paused-game resume countdown after 5 seconds, becoming active", () => {
-    expect(nextRole("resuming", 1000, 1000, 1000 + RESUME_MS - 1)).toBe(null);
-    expect(nextRole("resuming", 1000, 1000, 1000 + RESUME_MS + 1)).toBe("active");
+    expect(nextRole("resuming", 1000, 1000 + RESUME_MS - 1, 1000 + RESUME_MS - 1)).toBe(null);
+    expect(nextRole("resuming", 1000, 1000 + RESUME_MS + 1, 1000 + RESUME_MS + 1)).toBe("active");
   });
 
   it("treats a resuming connection as disconnected if it goes stale before the resume completes", () => {

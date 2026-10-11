@@ -39,25 +39,37 @@ function nextState(socket: WebSocket): Promise<ServerMessage & { t: "state" }> {
   });
 }
 
-it("waits alone, then runs once a second session joins", async () => {
-  const a = await connect();
-  const firstState = await nextState(a);
-  expect(firstState.status).toBe("waiting");
+it(
+  "waits alone, then runs once a second session joins",
+  async () => {
+    const a = await connect();
+    const firstState = await nextState(a);
+    expect(firstState.status).toBe("waiting");
 
-  const b = await connect();
+    const b = await connect();
 
-  const running = await new Promise<ServerMessage & { t: "state" }>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("never reached running")), 5000);
-    a.on("message", (data) => {
-      const msg = JSON.parse(data.toString());
-      if (msg.t === "state" && msg.status === "running") {
-        clearTimeout(timeout);
-        resolve(msg);
-      }
+    // Generous timeout: if an earlier test file's game paused (dropped
+    // below 2 active players while running) and never resumed, these two
+    // fresh sessions resume that run instead of starting a new one --
+    // planning.md section 7's 5s resume countdown, not the normal instant
+    // activation. Either way the game reaches running with 2 active (see
+    // spec/join-intro.test.ts's setup for the same tolerance, and its
+    // closing comment for why no WS test tries to leave a clean slate
+    // behind instead).
+    const running = await new Promise<ServerMessage & { t: "state" }>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("never reached running")), 8000);
+      a.on("message", (data) => {
+        const msg = JSON.parse(data.toString());
+        if (msg.t === "state" && msg.status === "running") {
+          clearTimeout(timeout);
+          resolve(msg);
+        }
+      });
     });
-  });
-  expect(running.activeCount).toBe(2);
+    expect(running.activeCount).toBe(2);
 
-  a.close();
-  b.close();
-});
+    a.close();
+    b.close();
+  },
+  10000,
+);

@@ -9,7 +9,8 @@ import type { ClientMessage, ServerMessage } from "../shared/protocol.ts";
 import { claimName, findPlayerByToken } from "./db/repo.ts";
 import { createColorState, release, reserve } from "./game/colors.ts";
 import { hasCursor, nextRole, type Role } from "./game/roles.ts";
-import type { Vec2 } from "./game/state.ts";
+import { activateRole } from "./game/roster.ts";
+import { getState, type Vec2 } from "./game/state.ts";
 
 const colorState = createColorState();
 
@@ -85,10 +86,13 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
         });
         return;
       }
-      // A confirmed takeover carries the same identity's colour straight
-      // over rather than releasing and re-reserving it -- nothing about
-      // the identity changed, just which socket represents it.
+      // A confirmed takeover carries the same identity's colour -- and
+      // stays fully active -- straight over rather than treating it as a
+      // fresh join; nothing about the identity changed, just which socket
+      // represents it. A genuine resume (no live connection to take over
+      // from) goes through the same join-role decision as a fresh claim.
       const colorIndex = live ? live.colorIndex : reserve(colorState, existing.id, msg.color);
+      const role: Role = live ? "active" : activateRole(getState().status, getState().pausedWithRun);
 
       if (live) {
         // Deleted before close() so a tick landing between the two never
@@ -103,7 +107,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
         name: existing.name,
         token: existing.token,
         lastInput: { x: 0.5, y: 0.5 },
-        role: "active",
+        role,
         roleChangedAt: Date.now(),
         lastActivityAt: Date.now(),
         colorIndex,
@@ -130,6 +134,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
   // null only if every one of the 16 colours is somehow already reserved,
   // which can't happen at the 12-active-player cap.
   const colorIndex = reserve(colorState, result.player.id, msg.color) ?? 0;
+  const role = activateRole(getState().status, getState().pausedWithRun);
 
   connections.set(socket, {
     socket,
@@ -137,7 +142,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
     name: result.player.name,
     token: result.player.token,
     lastInput: { x: 0.5, y: 0.5 },
-    role: "active",
+    role,
     roleChangedAt: Date.now(),
     lastActivityAt: Date.now(),
     colorIndex,
