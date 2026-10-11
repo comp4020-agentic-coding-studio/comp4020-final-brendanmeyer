@@ -1,4 +1,6 @@
 import type { ServerMessage } from "../shared/protocol.js";
+import { PLAYER_COLORS } from "../shared/palette.js";
+import { playerFlashAlpha } from "./flash.js";
 
 type StateMessage = Extract<ServerMessage, { t: "state" }>;
 
@@ -36,13 +38,16 @@ export function draw(ctx: CanvasRenderingContext2D, width: number, height: numbe
   }
 
   for (const player of state.players) {
-    ctx.fillStyle = "#60a5fa";
+    const alpha = playerFlashAlpha(player.state, player.flashMs);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = PLAYER_COLORS[player.color] ?? "#60a5fa";
     ctx.beginPath();
     ctx.arc(player.x * width, player.y * height, 6, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#e5e7eb";
     ctx.font = "12px sans-serif";
     ctx.fillText(player.name, player.x * width + 10, player.y * height - 10);
+    ctx.globalAlpha = 1;
   }
 
   if (state.status === "waiting") {

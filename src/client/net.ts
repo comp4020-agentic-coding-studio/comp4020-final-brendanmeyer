@@ -1,11 +1,12 @@
-// Opens the game WebSocket, keeps the reconnect token in localStorage (so
-// a returning visitor resumes the same identity rather than claiming a
-// fresh one), and exposes a tiny event-handler API to the rest of the
-// client.
+// Opens the game WebSocket, keeps the reconnect token and chosen colour in
+// localStorage (so a returning visitor resumes the same identity and
+// preference rather than claiming fresh ones), and exposes a tiny
+// event-handler API to the rest of the client.
 
 import type { ClientMessage, ServerMessage } from "../shared/protocol.js";
 
 const TOKEN_KEY = "collective-snake-token";
+const COLOR_KEY = "collective-snake-color";
 
 export function getStoredToken(): string | undefined {
   try {
@@ -23,27 +24,48 @@ function storeToken(token: string): void {
   }
 }
 
+export function getStoredColor(): number | undefined {
+  try {
+    const raw = localStorage.getItem(COLOR_KEY);
+    return raw === null ? undefined : Number(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+function storeColor(color: number): void {
+  try {
+    localStorage.setItem(COLOR_KEY, String(color));
+  } catch {
+    // losing the preference just means picking fresh next time
+  }
+}
+
 export interface NetHandlers {
-  onIdentity: (name: string) => void;
+  onIdentity: (name: string, color: number) => void;
   onState: (state: Extract<ServerMessage, { t: "state" }>) => void;
   // A tab sharing this browser's localStorage already resumed this token.
   // The caller decides (e.g. via confirm()) and calls Net.takeOver() if so.
   onAlreadyConnected: (name: string) => void;
   // The server closed this socket -- most likely another tab took over.
   onDisconnected: () => void;
+  onNameTaken: () => void;
 }
 
 export interface Net {
   sendInput: (x: number, y: number) => void;
   takeOver: () => void;
+  requestJoin: () => void;
+  acceptOffer: () => void;
+  declineOffer: () => void;
 }
 
-export function connect(handlers: NetHandlers): Net {
+export function connect(name: string, color: number, handlers: NetHandlers): Net {
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   const socket = new WebSocket(`${scheme}://${location.host}/ws`);
 
   function sendHello(takeover?: boolean): void {
-    const hello: ClientMessage = { t: "hello", token: getStoredToken(), takeover };
+    const hello: ClientMessage = { t: "hello", token: getStoredToken(), name, color, takeover };
     socket.send(JSON.stringify(hello));
   }
 
@@ -53,31 +75,34 @@ export function connect(handlers: NetHandlers): Net {
     const msg: ServerMessage = JSON.parse(event.data);
     if (msg.t === "welcome") {
       storeToken(msg.token);
-      handlers.onIdentity(msg.name);
+      storeColor(msg.color);
+      handlers.onIdentity(msg.name, msg.color);
     } else if (msg.t === "nameInvalid") {
       storeToken(msg.token);
-      handlers.onIdentity(msg.assigned);
+      storeColor(msg.color);
+      handlers.onIdentity(msg.assigned, msg.color);
     } else if (msg.t === "alreadyConnected") {
       handlers.onAlreadyConnected(msg.name);
+    } else if (msg.t === "nameTaken") {
+      handlers.onNameTaken();
     } else if (msg.t === "state") {
       handlers.onState(msg);
     }
-    // "nameTaken" doesn't apply here -- this client never asks for a
-    // specific name, so it can't collide with one.
   });
 
   socket.addEventListener("close", () => handlers.onDisconnected());
 
-  function sendInput(x: number, y: number): void {
+  function send(message: ClientMessage): void {
     if (socket.readyState === WebSocket.OPEN) {
-      const message: ClientMessage = { t: "input", x, y };
       socket.send(JSON.stringify(message));
     }
   }
 
-  function takeOver(): void {
-    sendHello(true);
-  }
-
-  return { sendInput, takeOver };
+  return {
+    sendInput: (x, y) => send({ t: "input", x, y }),
+    takeOver: () => sendHello(true),
+    requestJoin: () => send({ t: "requestJoin" }),
+    acceptOffer: () => send({ t: "acceptOffer" }),
+    declineOffer: () => send({ t: "declineOffer" }),
+  };
 }

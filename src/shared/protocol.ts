@@ -88,6 +88,10 @@ export interface PlayerView {
   // Only these four roles ever appear here -- spectators, queued, and
   // offered visitors have no cursor to render.
   state: "active" | "introducing" | "leaving" | "resuming";
+  // Milliseconds since this player entered `state` -- lets every viewer
+  // animate another player's flash, not just their own (StateMessage.you
+  // only carries that for the recipient's own connection).
+  flashMs: number;
 }
 
 // A connection's own status, personalized per recipient -- a spectator or

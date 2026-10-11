@@ -41,6 +41,7 @@ function broadcast(): void {
       y: c.lastInput.y,
       color: c.colorIndex ?? 0,
       state: c.role as CursorRole,
+      flashMs: now - c.roleChangedAt,
     })),
     snake: { path: state.snake.map((p): [number, number] => [p.x, p.y]) },
     food: state.food,
