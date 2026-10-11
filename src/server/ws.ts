@@ -6,7 +6,7 @@ import type { IncomingMessage, Server } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocketServer, type WebSocket } from "ws";
 import type { ClientMessage, ServerMessage } from "../shared/protocol.ts";
-import { claimName, findPlayerByToken } from "./db/repo.ts";
+import { claimName, findPlayerByToken, renameName } from "./db/repo.ts";
 import { createColorState, release, reserve } from "./game/colors.ts";
 import { MAX_ACTIVE, hasCursor, nextRole, occupiesSlot, type Role } from "./game/roles.ts";
 import { accept, createQueueState, dropOffer, enqueue, expireIfNeeded, makeOfferIfNeeded } from "./game/queue.ts";
@@ -134,6 +134,19 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
         });
         return;
       }
+      // A chosen name replaces a generated pseudonym (or an earlier choice)
+      // on resume -- only when it's actually different, so re-submitting
+      // the name already in effect (the common case now the entry screen
+      // pre-fills it) doesn't hit the database every reconnect. An invalid
+      // or already-taken request just keeps the existing name rather than
+      // failing the connection over it.
+      const requestedName = msg.name?.trim();
+      let name = existing.name;
+      if (requestedName && requestedName.toLowerCase() !== existing.name.toLowerCase()) {
+        const renamed = renameName(existing.id, requestedName);
+        if (renamed.ok) name = renamed.name;
+      }
+
       // A confirmed takeover carries the same identity's colour -- and
       // stays fully active -- straight over rather than treating it as a
       // fresh join; nothing about the identity changed, just which socket
@@ -154,7 +167,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
       connections.set(socket, {
         socket,
         playerId: existing.id,
-        name: existing.name,
+        name,
         token: existing.token,
         lastInput: { x: 0.5, y: 0.5 },
         role,
@@ -166,7 +179,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
         t: "welcome",
         token: existing.token,
         playerId: existing.id,
-        name: existing.name,
+        name,
         // null only if every one of the 16 colours is somehow already
         // reserved, which can't happen at the 12-active-player cap.
         color: colorIndex ?? 0,

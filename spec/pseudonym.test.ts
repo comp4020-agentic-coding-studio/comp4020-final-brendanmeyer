@@ -29,6 +29,16 @@ function nextMessage(socket: WebSocket): Promise<ServerMessage> {
   });
 }
 
+// A fixed literal name permanently claims that row in the players table, so
+// a second run against the same long-lived local dev server collides with
+// the first run's own leftover claim, not just within a single run -- the
+// two tests below check the resulting name's exact value (unlike "rejects a
+// name that's already taken" above, which only checks pass/fail and so
+// tolerates that collision by coincidence). A unique-per-run name avoids it.
+function uniqueName(prefix: string): string {
+  return `${prefix}${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
+}
+
 it("rejects a name that's already taken", async () => {
   const a = await connect();
   send(a, { t: "hello", name: "dupname" });
@@ -52,4 +62,46 @@ it("assigns a generated pseudonym for an empty name", async () => {
     expect(reply.assigned.length).toBeGreaterThan(0);
   }
   a.close();
+});
+
+// A generated pseudonym isn't a permanent identity -- resuming the same
+// token with a different, available name should actually adopt it, not
+// silently keep the old one (the chosen-name screen is pointless otherwise).
+it("replaces a generated pseudonym with a chosen name on resume", async () => {
+  const chosen = uniqueName("chosen");
+  const a = await connect();
+  send(a, { t: "hello", name: "" });
+  const first = await nextMessage(a);
+  if (first.t !== "nameInvalid") throw new Error("unreachable");
+  const { token } = first;
+
+  const b = await connect();
+  send(b, { t: "hello", token, name: chosen, takeover: true });
+  const second = await nextMessage(b);
+  expect(second).toMatchObject({ t: "welcome", token, name: chosen });
+
+  a.close();
+  b.close();
+});
+
+it("keeps the existing name if the requested replacement is already taken", async () => {
+  const taken = uniqueName("taken");
+  const other = await connect();
+  send(other, { t: "hello", name: taken });
+  await nextMessage(other);
+
+  const a = await connect();
+  send(a, { t: "hello", name: "" });
+  const first = await nextMessage(a);
+  if (first.t !== "nameInvalid") throw new Error("unreachable");
+  const { token, assigned } = first;
+
+  const b = await connect();
+  send(b, { t: "hello", token, name: taken, takeover: true });
+  const second = await nextMessage(b);
+  expect(second).toMatchObject({ t: "welcome", token, name: assigned });
+
+  other.close();
+  a.close();
+  b.close();
 });

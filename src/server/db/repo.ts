@@ -60,6 +60,28 @@ export function claimName(requestedName: string | undefined): ClaimResult {
   }
 }
 
+export type RenameResult = { ok: true; name: string } | { ok: false };
+
+// A generated pseudonym isn't meant to be permanent -- a returning visitor
+// choosing a real name on the entry screen should actually adopt it.
+// Silently keeps the existing name on an invalid or already-taken request
+// rather than erroring, the same tolerant-fallback shape as claimName: this
+// runs on every resume, including one where the name box still just shows
+// the name already in effect, so "no actual change requested" must be a
+// harmless no-op too.
+export function renameName(playerId: number, requestedName: string): RenameResult {
+  const trimmed = requestedName.trim();
+  if (!isValidName(trimmed)) return { ok: false };
+  const nameLower = trimmed.toLowerCase();
+  try {
+    db.prepare("UPDATE players SET name = ?, name_lower = ? WHERE id = ?").run(trimmed, nameLower, playerId);
+    return { ok: true, name: trimmed };
+  } catch (err) {
+    if (isUniqueConstraintOn(err, "name_lower")) return { ok: false };
+    throw err;
+  }
+}
+
 export function findPlayerByToken(token: string): Player | undefined {
   return db.prepare("SELECT id, name, token FROM players WHERE token = ?").get(token) as
     | Player
