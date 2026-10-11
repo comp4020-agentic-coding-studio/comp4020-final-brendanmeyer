@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from "vitest";
-import { setupFullscreen } from "./fullscreen.ts";
+import { setupFullscreen } from "../src/client/fullscreen.ts";
 
 // A minimal stand-in for Document -- jsdom doesn't implement the Fullscreen
 // API itself, and fullscreenElement is a getter-only property on the real
