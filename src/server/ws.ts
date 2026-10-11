@@ -19,6 +19,13 @@ export interface Connection {
 
 export const connections = new Map<WebSocket, Connection>();
 
+function findConnectionByPlayerId(playerId: number): Connection | undefined {
+  for (const conn of connections.values()) {
+    if (conn.playerId === playerId) return conn;
+  }
+  return undefined;
+}
+
 function clamp01(n: number): number {
   if (Number.isNaN(n)) return 0.5;
   return Math.max(0, Math.min(1, n));
@@ -34,6 +41,23 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
   if (msg.token) {
     const existing = findPlayerByToken(msg.token);
     if (existing) {
+      const live = findConnectionByPlayerId(existing.id);
+      if (live && !msg.takeover) {
+        send(socket, {
+          t: "alreadyConnected",
+          token: existing.token,
+          playerId: existing.id,
+          name: existing.name,
+        });
+        return;
+      }
+      if (live) {
+        // Deleted before close() so a tick landing between the two never
+        // finds both connections live for the same playerId.
+        connections.delete(live.socket);
+        live.socket.close();
+      }
+
       connections.set(socket, {
         socket,
         playerId: existing.id,
