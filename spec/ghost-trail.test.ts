@@ -74,11 +74,27 @@ it(
   async () => {
     await settleSharedState();
 
+    // The current best, before forcing a run of our own -- on a long-lived
+    // or live server with real history already on the books, our forced
+    // run (the minimum possible score, since it collides immediately) isn't
+    // guaranteed to beat it. Either way, whichever run is on top afterwards
+    // must have a valid, correctly ordered replay -- that's the mechanism
+    // this test exists to check, not specifically that *our* run wins.
+    const beforeRes = await fetch(new URL("/api/records", baseUrl));
+    const before: RecordRunRow[] = await beforeRes.json();
+    const previousBest = before[0]?.collectiveScore ?? 0;
+
     const a = await connect();
     await nextMessage(a);
     const b = await connect();
     await nextMessage(b);
-    await nextStateWhere(a, (s) => s.status === "running" && s.activeCount === 2, 12000);
+    // At least 2, not exactly 2: a shared or live server can already have
+    // other real connections active. (Forcing the collision below still
+    // assumes a and b dominate the shared centroid -- if a third real
+    // player is actively steering elsewhere at the same moment, nothing on
+    // the test side can force a collision past that, same as any other
+    // concurrent-real-user scenario this suite can't control for.)
+    await nextStateWhere(a, (s) => s.status === "running" && s.activeCount >= 2, 12000);
 
     // Steer hard toward the right edge -- one input each is enough, the
     // server keeps steering toward the last target every tick.
@@ -88,15 +104,15 @@ it(
     const gameover = await nextStateWhere(a, (s) => s.status === "gameover", 10000);
     const finishedScore = gameover.collectiveScore;
 
-    // The run just finished should be the highest (or tied-highest, but
-    // most recent) record on the board -- find it by score, since the
-    // gameover state itself doesn't carry a runId.
     const recordsRes = await fetch(new URL("/api/records", baseUrl));
     const records: RecordRunRow[] = await recordsRes.json();
-    const match = records.find((r) => r.collectiveScore === finishedScore);
-    expect(match).toBeDefined();
+    // Our own run is only findable by its exact score if it actually beat
+    // the previous best; otherwise the board's existing top entry is the
+    // one whose replay mechanism this test is actually checking.
+    const top = finishedScore > previousBest ? records.find((r) => r.collectiveScore === finishedScore) : records[0];
+    expect(top).toBeDefined();
 
-    const replayRes = await fetch(new URL(`/api/records/${match?.runId}/replay`, baseUrl));
+    const replayRes = await fetch(new URL(`/api/records/${top?.runId}/replay`, baseUrl));
     expect(replayRes.status).toBe(200);
     const replay: { elapsedMs: number }[] = await replayRes.json();
     expect(replay.length).toBeGreaterThan(0);

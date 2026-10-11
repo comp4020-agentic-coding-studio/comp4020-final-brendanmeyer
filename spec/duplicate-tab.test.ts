@@ -35,29 +35,36 @@ function closed(socket: WebSocket): Promise<void> {
   return new Promise((resolve) => socket.once("close", () => resolve()));
 }
 
-it("offers a takeover instead of doubling the same identity", async () => {
-  const a = await connect();
-  send(a, { t: "hello", name: "" });
-  const welcome = await nextMessage(a);
-  expect(welcome.t).toBe("nameInvalid"); // generated pseudonym, still carries a token
-  if (welcome.t !== "nameInvalid") throw new Error("unreachable");
-  const { token, playerId } = welcome;
+it(
+  "offers a takeover instead of doubling the same identity",
+  async () => {
+    const a = await connect();
+    send(a, { t: "hello", name: "" });
+    const welcome = await nextMessage(a);
+    expect(welcome.t).toBe("nameInvalid"); // generated pseudonym, still carries a token
+    if (welcome.t !== "nameInvalid") throw new Error("unreachable");
+    const { token, playerId } = welcome;
 
-  const b = await connect();
-  send(b, { t: "hello", token });
-  const offer = await nextMessage(b);
-  expect(offer).toMatchObject({ t: "alreadyConnected", token, playerId });
+    const b = await connect();
+    send(b, { t: "hello", token });
+    const offer = await nextMessage(b);
+    expect(offer).toMatchObject({ t: "alreadyConnected", token, playerId });
 
-  // a hasn't been touched yet -- still the live connection, not kicked.
-  expect(a.readyState).toBe(WebSocket.OPEN);
+    // a hasn't been touched yet -- still the live connection, not kicked.
+    expect(a.readyState).toBe(WebSocket.OPEN);
 
-  const aClosed = closed(a);
-  send(b, { t: "hello", token, takeover: true });
-  const takeoverWelcome = await nextMessage(b);
-  expect(takeoverWelcome).toMatchObject({ t: "welcome", token, playerId });
+    const aClosed = closed(a);
+    send(b, { t: "hello", token, takeover: true });
+    const takeoverWelcome = await nextMessage(b);
+    expect(takeoverWelcome).toMatchObject({ t: "welcome", token, playerId });
 
-  await aClosed; // confirming takes over by kicking the original connection
+    await aClosed; // confirming takes over by kicking the original connection
 
-  a.close();
-  b.close();
-});
+    a.close();
+    b.close();
+  },
+  // Generous timeout: three WS round trips, which can exceed vitest's 5s
+  // default against a real deployed URL's network latency, not just
+  // localhost.
+  15000,
+);
