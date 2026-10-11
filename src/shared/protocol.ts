@@ -6,6 +6,10 @@ export interface HelloMessage {
   t: "hello";
   token?: string;
   name?: string;
+  // Set after the visitor confirms "take over" in response to
+  // AlreadyConnectedMessage: proceed even though this token already has a
+  // live connection, and disconnect that one.
+  takeover?: boolean;
 }
 
 export interface InputMessage {
@@ -37,6 +41,16 @@ export interface NameInvalidMessage {
   playerId: number;
 }
 
+// Sent instead of WelcomeMessage when a resumed token already has a live
+// connection elsewhere. The client offers to take over; this socket isn't
+// registered as a connection until it resends hello with takeover: true.
+export interface AlreadyConnectedMessage {
+  t: "alreadyConnected";
+  token: string;
+  playerId: number;
+  name: string;
+}
+
 export interface PlayerView {
   id: number;
   name: string;
@@ -60,4 +74,5 @@ export type ServerMessage =
   | WelcomeMessage
   | NameTakenMessage
   | NameInvalidMessage
+  | AlreadyConnectedMessage
   | StateMessage;
