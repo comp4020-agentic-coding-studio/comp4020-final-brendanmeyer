@@ -62,6 +62,37 @@ export function draw(ctx: CanvasRenderingContext2D, width: number, height: numbe
   }
 }
 
+export interface GhostFrame {
+  snakePath: [number, number][];
+  players: { x: number; y: number; color: number }[];
+}
+
+// The current record run, replayed at reduced opacity (planning.md
+// section 21) -- drawn on top of the live frame, visual only. Call after
+// draw() so it isn't cleared by draw()'s own clearRect.
+export function drawGhost(ctx: CanvasRenderingContext2D, width: number, height: number, frame: GhostFrame): void {
+  ctx.globalAlpha = 0.25;
+  ctx.strokeStyle = "#6ee7b7";
+  ctx.lineWidth = 6;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  frame.snakePath.forEach(([x, y], i) => {
+    const px = x * width;
+    const py = y * height;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+
+  for (const player of frame.players) {
+    ctx.fillStyle = PLAYER_COLORS[player.color] ?? "#60a5fa";
+    ctx.beginPath();
+    ctx.arc(player.x * width, player.y * height, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
 function overlayText(ctx: CanvasRenderingContext2D, width: number, height: number, text: string): void {
   ctx.fillStyle = "#e5e7eb";
   ctx.font = "18px sans-serif";
