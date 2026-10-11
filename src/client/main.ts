@@ -18,6 +18,24 @@ const statusEl = required(document.querySelector<HTMLElement>("#status"), "missi
 const scoreEl = required(document.querySelector<HTMLElement>("#score"), "missing #score element");
 const lastRunEl = required(document.querySelector<HTMLElement>("#last-run"), "missing #last-run element");
 const ctx = required(canvas.getContext("2d"), "2d canvas context unavailable");
+const fullscreenBtn = required(document.querySelector<HTMLButtonElement>("#fullscreen"), "missing #fullscreen button");
+
+// The on-screen touch controls are cramped under a mobile browser's address
+// and toolbar chrome; fullscreen reclaims that space. Hidden by default and
+// only shown once we know the API exists (iOS Safari below 16.4 has none).
+if (document.documentElement.requestFullscreen) {
+  fullscreenBtn.hidden = false;
+  fullscreenBtn.addEventListener("click", () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  });
+  document.addEventListener("fullscreenchange", () => {
+    fullscreenBtn.textContent = document.fullscreenElement ? "Exit fullscreen" : "Fullscreen";
+  });
+}
 
 function resize(): void {
   canvas.width = canvas.clientWidth;
