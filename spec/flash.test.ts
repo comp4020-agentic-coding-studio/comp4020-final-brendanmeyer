@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { flashAlpha } from "../src/client/flash.ts";
+import { flashAlpha, playerFlashAlpha } from "../src/client/flash.ts";
 
 // planning.md sections 4 and 5: a flashing cursor, increasing in speed
 // while introducing, decreasing while leaving. Pure function -- a visual
@@ -30,5 +30,17 @@ describe("flashAlpha", () => {
     // and so coincide -- a symmetric crossover, not a bug. Off-center they
     // diverge.
     expect(flashAlpha(600, 2000, "increasing")).not.toBe(flashAlpha(600, 2000, "decreasing"));
+  });
+});
+
+describe("playerFlashAlpha", () => {
+  it("doesn't flash a plainly active or resuming player", () => {
+    expect(playerFlashAlpha("active", 600)).toBe(1);
+    expect(playerFlashAlpha("resuming", 600)).toBe(1);
+  });
+
+  it("flashes increasing for introducing, decreasing for leaving", () => {
+    expect(playerFlashAlpha("introducing", 600)).toBe(flashAlpha(600, 2000, "increasing"));
+    expect(playerFlashAlpha("leaving", 600)).toBe(flashAlpha(600, 2000, "decreasing"));
   });
 });
