@@ -9,6 +9,12 @@ import { settleSharedState } from "./settle.ts";
 // starts at the board's centre and SNAKE_SPEED (0.01/tick) means reaching
 // an edge takes only ~50 ticks (~3.3s at TICK_MS), far faster than waiting
 // for one to happen incidentally.
+//
+// Generous timeouts throughout: this is the one spec file that reaches a
+// real "gameover" at all, and observed local wall-clock jitter (not a
+// logic bug -- it always passes in isolation, and only ever fails with
+// "never matched in time," never with the wrong value) occasionally eats
+// into tighter budgets during a long, heavily-loaded local test session.
 const baseUrl = inject("baseUrl");
 
 function wsUrl(path: string): string {
@@ -72,14 +78,14 @@ it(
     await nextMessage(a);
     const b = await connect();
     await nextMessage(b);
-    await nextStateWhere(a, (s) => s.status === "running" && s.activeCount === 2, 8000);
+    await nextStateWhere(a, (s) => s.status === "running" && s.activeCount === 2, 12000);
 
     // Steer hard toward the right edge -- one input each is enough, the
     // server keeps steering toward the last target every tick.
     send(a, { t: "input", x: 1, y: 0.5 });
     send(b, { t: "input", x: 1, y: 0.5 });
 
-    const gameover = await nextStateWhere(a, (s) => s.status === "gameover", 6000);
+    const gameover = await nextStateWhere(a, (s) => s.status === "gameover", 10000);
     const finishedScore = gameover.collectiveScore;
 
     // The run just finished should be the highest (or tied-highest, but
@@ -101,5 +107,5 @@ it(
     a.close();
     b.close();
   },
-  28000,
+  40000,
 );
