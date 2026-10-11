@@ -46,7 +46,7 @@ resize();
 
 let latestState: StateMessage | null = null;
 
-const { sendInput } = connect({
+const { sendInput, takeOver } = connect({
   onIdentity: (name) => {
     statusEl.textContent = `Playing as ${name}`;
   },
@@ -55,6 +55,17 @@ const { sendInput } = connect({
     scoreEl.textContent =
       `Score: ${state.rawScore} · Collective: ${state.collectiveScore} ` +
       `(×${state.multiplier.toFixed(2)}) · Players: ${state.activeCount}`;
+  },
+  // A tab sharing this browser's localStorage already resumed this token --
+  // this one isn't playing until the visitor confirms taking over.
+  onAlreadyConnected: (name) => {
+    statusEl.textContent = `${name} is already playing in another tab`;
+    if (confirm(`${name} is already being played in another tab. Take over and play here instead?`)) {
+      takeOver();
+    }
+  },
+  onDisconnected: () => {
+    statusEl.textContent = "Disconnected — likely taken over from another tab";
   },
 });
 

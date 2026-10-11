@@ -26,20 +26,28 @@ function storeToken(token: string): void {
 export interface NetHandlers {
   onIdentity: (name: string) => void;
   onState: (state: Extract<ServerMessage, { t: "state" }>) => void;
+  // A tab sharing this browser's localStorage already resumed this token.
+  // The caller decides (e.g. via confirm()) and calls Net.takeOver() if so.
+  onAlreadyConnected: (name: string) => void;
+  // The server closed this socket -- most likely another tab took over.
+  onDisconnected: () => void;
 }
 
 export interface Net {
   sendInput: (x: number, y: number) => void;
+  takeOver: () => void;
 }
 
 export function connect(handlers: NetHandlers): Net {
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   const socket = new WebSocket(`${scheme}://${location.host}/ws`);
 
-  socket.addEventListener("open", () => {
-    const hello: ClientMessage = { t: "hello", token: getStoredToken() };
+  function sendHello(takeover?: boolean): void {
+    const hello: ClientMessage = { t: "hello", token: getStoredToken(), takeover };
     socket.send(JSON.stringify(hello));
-  });
+  }
+
+  socket.addEventListener("open", () => sendHello());
 
   socket.addEventListener("message", (event) => {
     const msg: ServerMessage = JSON.parse(event.data);
@@ -49,12 +57,16 @@ export function connect(handlers: NetHandlers): Net {
     } else if (msg.t === "nameInvalid") {
       storeToken(msg.token);
       handlers.onIdentity(msg.assigned);
+    } else if (msg.t === "alreadyConnected") {
+      handlers.onAlreadyConnected(msg.name);
     } else if (msg.t === "state") {
       handlers.onState(msg);
     }
     // "nameTaken" doesn't apply here -- this client never asks for a
     // specific name, so it can't collide with one.
   });
+
+  socket.addEventListener("close", () => handlers.onDisconnected());
 
   function sendInput(x: number, y: number): void {
     if (socket.readyState === WebSocket.OPEN) {
@@ -63,5 +75,9 @@ export function connect(handlers: NetHandlers): Net {
     }
   }
 
-  return { sendInput };
+  function takeOver(): void {
+    sendHello(true);
+  }
+
+  return { sendInput, takeOver };
 }
