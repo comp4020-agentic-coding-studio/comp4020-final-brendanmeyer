@@ -67,6 +67,21 @@ export interface PlayerView {
   state: "active" | "introducing" | "leaving" | "resuming";
 }
 
+// A connection's own status, personalized per recipient -- a spectator or
+// someone waiting in the queue has no entry in `players` at all (no
+// cursor), so this is the only way a session learns its own standing.
+// remainingMs counts down to the role's own timer completing (the 2s/5s
+// countdowns from planning.md sections 4, 5 and 7); queued/offered arrive
+// with the join queue (Phase 6).
+export type YourView =
+  | { role: "active" }
+  | { role: "introducing"; remainingMs: number }
+  | { role: "leaving"; remainingMs: number }
+  | { role: "resuming"; remainingMs: number }
+  | { role: "spectator" }
+  | { role: "queued"; position: number; size: number }
+  | { role: "offered"; remainingMs: number };
+
 export interface StateMessage {
   t: "state";
   status: "waiting" | "running" | "gameover";
@@ -75,6 +90,7 @@ export interface StateMessage {
   pausedWithRun: boolean;
   activeCount: number;
   players: PlayerView[];
+  you: YourView;
   snake: { path: [number, number][] };
   food: { x: number; y: number } | null;
   rawScore: number;
