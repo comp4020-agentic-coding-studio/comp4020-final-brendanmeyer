@@ -25,7 +25,10 @@ describe("flashAlpha", () => {
     expect(flashAlpha(500, 2000, "increasing")).toBe(flashAlpha(500, 2000, "increasing"));
   });
 
-  it("increasing and decreasing differ partway through the window", () => {
-    expect(flashAlpha(1000, 2000, "increasing")).not.toBe(flashAlpha(1000, 2000, "decreasing"));
+  it("increasing and decreasing differ away from the window's midpoint", () => {
+    // At the exact midpoint both directions reach the same progress (0.5)
+    // and so coincide -- a symmetric crossover, not a bug. Off-center they
+    // diverge.
+    expect(flashAlpha(600, 2000, "increasing")).not.toBe(flashAlpha(600, 2000, "decreasing"));
   });
 });
