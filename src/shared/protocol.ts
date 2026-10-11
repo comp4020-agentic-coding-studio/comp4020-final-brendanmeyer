@@ -10,6 +10,9 @@ export interface HelloMessage {
   // AlreadyConnectedMessage: proceed even though this token already has a
   // live connection, and disconnect that one.
   takeover?: boolean;
+  // Requested palette index (planning.md section 2). Honoured if valid and
+  // free; otherwise the server assigns a different one.
+  color?: number;
 }
 
 export interface InputMessage {
@@ -25,6 +28,7 @@ export interface WelcomeMessage {
   token: string;
   playerId: number;
   name: string;
+  color: number;
 }
 
 export interface NameTakenMessage {
@@ -39,6 +43,7 @@ export interface NameInvalidMessage {
   assigned: string;
   token: string;
   playerId: number;
+  color: number;
 }
 
 // Sent instead of WelcomeMessage when a resumed token already has a live
@@ -56,6 +61,7 @@ export interface PlayerView {
   name: string;
   x: number;
   y: number;
+  color: number;
   // Only these four roles ever appear here -- spectators, queued, and
   // offered visitors have no cursor to render.
   state: "active" | "introducing" | "leaving" | "resuming";
