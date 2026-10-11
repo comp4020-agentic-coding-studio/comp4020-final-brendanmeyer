@@ -1,6 +1,7 @@
 import { expect, inject, it } from "vitest";
 import WebSocket from "ws";
 import type { ClientMessage, ServerMessage } from "../src/shared/protocol.ts";
+import { settleSharedState } from "./settle.ts";
 
 // planning.md section 6: a 13th visitor, beyond the 12-active-player cap,
 // becomes a spectator rather than an active player -- no cursor rendered,
@@ -55,6 +56,13 @@ function playerId(msg: ServerMessage): number {
 it(
   "a 13th visitor becomes a spectator rather than an active player",
   async () => {
+    // A preceding test's closed sockets still occupy a capacity slot for
+    // up to 2s while they're flashing out (planning.md section 5) -- wait
+    // that out first, or some of these 12 could land as spectators before
+    // a slot actually frees up, and there's no queue yet (Phase 6) to ever
+    // promote them afterward.
+    await settleSharedState();
+
     const twelve = await Promise.all(
       Array.from({ length: 12 }, async () => {
         const socket = await connect();

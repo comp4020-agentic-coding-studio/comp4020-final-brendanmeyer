@@ -1,6 +1,7 @@
 import { expect, inject, it } from "vitest";
 import WebSocket from "ws";
 import type { ServerMessage } from "../src/shared/protocol.ts";
+import { settleSharedState } from "./settle.ts";
 
 // The core invariant this week: the game needs 2 active players, no solo
 // fallback. One session alone must see "waiting"; a second joining must
@@ -42,6 +43,8 @@ function nextState(socket: WebSocket): Promise<ServerMessage & { t: "state" }> {
 it(
   "waits alone, then runs once a second session joins",
   async () => {
+    await settleSharedState();
+
     const a = await connect();
     const firstState = await nextState(a);
     expect(firstState.status).toBe("waiting");
@@ -71,5 +74,5 @@ it(
     a.close();
     b.close();
   },
-  10000,
+  13000,
 );

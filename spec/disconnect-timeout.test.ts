@@ -1,6 +1,7 @@
 import { expect, inject, it } from "vitest";
 import WebSocket from "ws";
 import type { ClientMessage, ServerMessage } from "../src/shared/protocol.ts";
+import { settleSharedState } from "./settle.ts";
 
 // The disconnect-timeout threshold itself (planning.md section 5: 3s of
 // silence starts the leaving flash, which lasts 2s before removal) is pure
@@ -65,6 +66,8 @@ function findPlayer(msg: StateMessage, playerId: number) {
 it(
   "a clean close starts the leaving flash immediately, then removes the player",
   async () => {
+    await settleSharedState();
+
     const a = await connect();
     const welcomeA = await nextMessage(a);
     if (welcomeA.t !== "welcome" && welcomeA.t !== "nameInvalid") throw new Error("unreachable");
@@ -95,5 +98,5 @@ it(
     // its own setup, rather than each one trying to leave a clean slate.
     b.close();
   },
-  15000,
+  17000,
 );

@@ -4,6 +4,8 @@
 // registry so the timing logic is unit-testable without a real socket or
 // real elapsed time (see spec/roles.test.ts).
 
+import type { YourView } from "../../shared/protocol.ts";
+
 export type Role = "active" | "introducing" | "leaving" | "resuming" | "spectator" | "queued" | "offered";
 
 export const MAX_ACTIVE = 12;
@@ -63,4 +65,27 @@ export function nextRole(role: Role, roleChangedAt: number, lastActivityAt: numb
     return "removed";
   }
   return null;
+}
+
+// This connection's own personalized status (protocol.ts's YourView) --
+// the only way a spectator or queued visitor, who has no cursor and so no
+// entry in `players`, learns its own standing. queued/offered are built
+// ad-hoc wherever the queue actually exists (Phase 6); unreachable until
+// then since nothing assigns those roles yet.
+export function buildYourView(role: Role, roleChangedAt: number, now: number): YourView {
+  const remaining = (totalMs: number): number => Math.max(0, totalMs - (now - roleChangedAt));
+  switch (role) {
+    case "introducing":
+      return { role, remainingMs: remaining(INTRO_MS) };
+    case "leaving":
+      return { role, remainingMs: remaining(LEAVE_FLASH_MS) };
+    case "resuming":
+      return { role, remainingMs: remaining(RESUME_MS) };
+    case "active":
+      return { role: "active" };
+    case "spectator":
+    case "queued":
+    case "offered":
+      return { role: "spectator" };
+  }
 }

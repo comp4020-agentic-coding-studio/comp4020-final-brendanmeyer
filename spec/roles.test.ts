@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DISCONNECT_TIMEOUT_MS, INTRO_MS, LEAVE_FLASH_MS, nextRole, RESUME_MS } from "../src/server/game/roles.ts";
+import {
+  buildYourView,
+  DISCONNECT_TIMEOUT_MS,
+  INTRO_MS,
+  LEAVE_FLASH_MS,
+  nextRole,
+  RESUME_MS,
+} from "../src/server/game/roles.ts";
 
 // planning.md section 5's two timing rules, pure and real-time-independent:
 // no activity for 3 seconds starts the leaving flash; the flash lasts 2
@@ -52,5 +59,32 @@ describe("nextRole", () => {
     // 3s staleness is shorter than the 5s resume countdown -- silence
     // should win, not an automatic activation at 5s regardless.
     expect(nextRole("resuming", 1000, 1000, 1000 + DISCONNECT_TIMEOUT_MS + 1)).toBe("leaving");
+  });
+});
+
+describe("buildYourView", () => {
+  it("has no countdown while simply active", () => {
+    expect(buildYourView("active", 0, 5000)).toEqual({ role: "active" });
+  });
+
+  it("counts down the join introduction", () => {
+    expect(buildYourView("introducing", 1000, 1000)).toEqual({ role: "introducing", remainingMs: INTRO_MS });
+    expect(buildYourView("introducing", 1000, 1000 + INTRO_MS)).toEqual({ role: "introducing", remainingMs: 0 });
+  });
+
+  it("counts down the leaving flash", () => {
+    expect(buildYourView("leaving", 1000, 1000)).toEqual({ role: "leaving", remainingMs: LEAVE_FLASH_MS });
+  });
+
+  it("counts down the resume countdown", () => {
+    expect(buildYourView("resuming", 1000, 1000)).toEqual({ role: "resuming", remainingMs: RESUME_MS });
+  });
+
+  it("never reports a negative remainingMs past the threshold", () => {
+    expect(buildYourView("introducing", 1000, 1000 + INTRO_MS + 500)).toEqual({ role: "introducing", remainingMs: 0 });
+  });
+
+  it("reports spectator plainly, with no countdown", () => {
+    expect(buildYourView("spectator", 0, 5000)).toEqual({ role: "spectator" });
   });
 });

@@ -8,8 +8,8 @@ import { WebSocketServer, type WebSocket } from "ws";
 import type { ClientMessage, ServerMessage } from "../shared/protocol.ts";
 import { claimName, findPlayerByToken } from "./db/repo.ts";
 import { createColorState, release, reserve } from "./game/colors.ts";
-import { hasCursor, nextRole, type Role } from "./game/roles.ts";
-import { activateRole } from "./game/roster.ts";
+import { hasCursor, nextRole, occupiesSlot, type Role } from "./game/roles.ts";
+import { admit } from "./game/roster.ts";
 import { getState, type Vec2 } from "./game/state.ts";
 
 const colorState = createColorState();
@@ -35,6 +35,14 @@ function findConnectionByPlayerId(playerId: number): Connection | undefined {
     if (conn.playerId === playerId) return conn;
   }
   return undefined;
+}
+
+function occupiedSlotCount(): number {
+  let count = 0;
+  for (const conn of connections.values()) {
+    if (occupiesSlot(conn.role)) count++;
+  }
+  return count;
 }
 
 function clamp01(n: number): number {
@@ -90,9 +98,11 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
       // stays fully active -- straight over rather than treating it as a
       // fresh join; nothing about the identity changed, just which socket
       // represents it. A genuine resume (no live connection to take over
-      // from) goes through the same join-role decision as a fresh claim.
-      const colorIndex = live ? live.colorIndex : reserve(colorState, existing.id, msg.color);
-      const role: Role = live ? "active" : activateRole(getState().status, getState().pausedWithRun);
+      // from) goes through the same capacity/join-role decision as a fresh
+      // claim.
+      const role: Role = live ? "active" : admit(occupiedSlotCount(), getState().status, getState().pausedWithRun);
+      // Spectators don't reserve a colour (planning.md section 2).
+      const colorIndex = live ? live.colorIndex : role === "spectator" ? null : reserve(colorState, existing.id, msg.color);
 
       if (live) {
         // Deleted before close() so a tick landing between the two never
@@ -131,10 +141,11 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
     return;
   }
 
+  const role = admit(occupiedSlotCount(), getState().status, getState().pausedWithRun);
+  // Spectators don't reserve a colour (planning.md section 2); otherwise
   // null only if every one of the 16 colours is somehow already reserved,
   // which can't happen at the 12-active-player cap.
-  const colorIndex = reserve(colorState, result.player.id, msg.color) ?? 0;
-  const role = activateRole(getState().status, getState().pausedWithRun);
+  const colorIndex = role === "spectator" ? null : (reserve(colorState, result.player.id, msg.color) ?? 0);
 
   connections.set(socket, {
     socket,
@@ -154,7 +165,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
       assigned: result.assignedName,
       token: result.player.token,
       playerId: result.player.id,
-      color: colorIndex,
+      color: colorIndex ?? 0,
     });
     return;
   }
@@ -164,7 +175,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
     token: result.player.token,
     playerId: result.player.id,
     name: result.player.name,
-    color: colorIndex,
+    color: colorIndex ?? 0,
   });
 }
 

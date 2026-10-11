@@ -8,8 +8,8 @@ import { connections, sweep } from "../ws.ts";
 import { recordRun } from "../db/repo.ts";
 import { foodEventScore, multiplier } from "../../shared/scoring.ts";
 import type { CursorRole } from "./roles.ts";
-import { countsTowardSimulation, hasCursor } from "./roles.ts";
-import type { ServerMessage } from "../../shared/protocol.ts";
+import { buildYourView, countsTowardSimulation, hasCursor } from "./roles.ts";
+import type { ServerMessage, StateMessage } from "../../shared/protocol.ts";
 import { centroid } from "./centroid.ts";
 import { eatsFood, spawnFood } from "./food.ts";
 import { advance, hitsSelf, hitsWall, steer } from "./snake.ts";
@@ -18,11 +18,16 @@ import { freshState, GAME_OVER_RESET_MS, getState, setState, SNAKE_SPEED, TICK_M
 let runStartedAt = Date.now();
 let peakPlayersThisRun = 0;
 
+// A connection's own `you` differs per recipient (its role, its own
+// countdown), so unlike every other field this can't be computed once and
+// shared across every socket's payload.
 function broadcast(): void {
   const state = getState();
-  const withCursor = [...connections.values()].filter((c) => hasCursor(c.role));
+  const now = Date.now();
+  const all = [...connections.values()];
+  const withCursor = all.filter((c) => hasCursor(c.role));
   const activeCount = withCursor.filter((c) => c.role === "active").length;
-  const message: ServerMessage = {
+  const shared: Omit<StateMessage, "you"> = {
     t: "state",
     status: state.status,
     pausedWithRun: state.pausedWithRun,
@@ -41,9 +46,10 @@ function broadcast(): void {
     collectiveScore: state.collectiveScore,
     multiplier: activeCount >= 2 ? multiplier(Math.min(activeCount, 12)) : 1,
   };
-  const payload = JSON.stringify(message);
-  for (const conn of connections.values()) {
-    if (conn.socket.readyState === conn.socket.OPEN) conn.socket.send(payload);
+  for (const conn of all) {
+    if (conn.socket.readyState !== conn.socket.OPEN) continue;
+    const message: ServerMessage = { ...shared, you: buildYourView(conn.role, conn.roleChangedAt, now) };
+    conn.socket.send(JSON.stringify(message));
   }
 }
 

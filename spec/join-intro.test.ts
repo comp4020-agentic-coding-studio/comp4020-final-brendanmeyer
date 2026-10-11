@@ -1,6 +1,7 @@
 import { expect, inject, it } from "vitest";
 import WebSocket from "ws";
 import type { ClientMessage, ServerMessage } from "../src/shared/protocol.ts";
+import { settleSharedState } from "./settle.ts";
 
 // planning.md section 4: a player joining a game already running gets a
 // 2-second introduction -- their cursor is visible but doesn't affect the
@@ -62,6 +63,8 @@ function playerId(msg: ServerMessage): number {
 it(
   "a player joining a running game is introduced for 2s before affecting the centroid or multiplier",
   async () => {
+    await settleSharedState();
+
     const a = await connect();
     await nextMessage(a);
     const b = await connect();
@@ -94,5 +97,5 @@ it(
     b.close();
     c.close();
   },
-  15000,
+  17000,
 );

@@ -1,6 +1,7 @@
 import { expect, inject, it } from "vitest";
 import WebSocket from "ws";
 import type { ClientMessage, ServerMessage } from "../src/shared/protocol.ts";
+import { settleSharedState } from "./settle.ts";
 
 // Phase 3 part B: the hello color round-trip and the release-on-removal
 // timing, over a real socket. The reservation logic itself (lowest-free,
@@ -40,6 +41,12 @@ function colorOf(msg: ServerMessage): number {
 // asserting an exact index stays clear of those by picking from the top
 // instead of the bottom.
 it("assigns the requested colour, or a different one if it's already taken", async () => {
+  // A connection becomes a spectator (no colour at all) rather than active
+  // if the 12-player cap is already saturated by a preceding test's
+  // not-yet-cleared connections (planning.md section 5's 2s leaving
+  // flash still occupies a slot) -- wait that out first.
+  await settleSharedState();
+
   const a = await connect(15);
   const welcomeA = await nextMessage(a);
   expect(colorOf(welcomeA)).toBe(15);
@@ -50,7 +57,7 @@ it("assigns the requested colour, or a different one if it's already taken", asy
 
   a.close();
   b.close();
-});
+}, 8000);
 
 it(
   "releases a colour once the player is fully removed, not just leaving",
