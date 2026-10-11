@@ -62,6 +62,21 @@ function storeName(name: string): void {
   }
 }
 
+// Declining a takeover means this identity isn't who the visitor actually
+// wants to be -- keeping its token/name/colour around would just resume the
+// same still-elsewhere-active identity and hit the same prompt again next
+// time, so this clears all three, leaving a blank entry screen ready to
+// claim a genuinely new one.
+export function clearStored(): void {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(COLOR_KEY);
+    localStorage.removeItem(NAME_KEY);
+  } catch {
+    // nothing was going to be remembered anyway
+  }
+}
+
 export interface NetHandlers {
   onIdentity: (name: string, color: number) => void;
   onState: (state: Extract<ServerMessage, { t: "state" }>) => void;

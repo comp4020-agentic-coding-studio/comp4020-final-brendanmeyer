@@ -13,7 +13,6 @@ export interface EntryResult {
 }
 
 export interface EntryElements {
-  overlay: HTMLElement;
   nameInput: HTMLInputElement;
   passwordInput: HTMLInputElement;
   swatchContainer: HTMLElement;
@@ -21,7 +20,7 @@ export interface EntryElements {
 }
 
 export function collectEntry(elements: EntryElements): Promise<EntryResult> {
-  const { overlay, nameInput, passwordInput, swatchContainer, playButton } = elements;
+  const { nameInput, passwordInput, swatchContainer, playButton } = elements;
   let selected = getStoredColor() ?? 0;
   nameInput.value = getStoredName() ?? "";
   // Never persisted or pre-filled, unlike name/colour -- it's only ever
@@ -44,9 +43,13 @@ export function collectEntry(elements: EntryElements): Promise<EntryResult> {
     return button;
   });
 
+  // Deliberately doesn't hide the entry overlay itself -- the hello sent in
+  // response to this can still come back "already taken" or "already
+  // playing elsewhere", which needs to be shown on this screen, not over a
+  // game the visitor never actually entered. The caller hides the overlay
+  // once a real identity is confirmed.
   return new Promise((resolve) => {
     playButton.addEventListener("click", () => {
-      overlay.hidden = true;
       resolve({ name: nameInput.value, color: selected, password: passwordInput.value });
     });
   });

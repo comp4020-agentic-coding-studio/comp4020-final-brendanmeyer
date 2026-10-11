@@ -1,4 +1,4 @@
-import { connect, getStoredToken } from "./net.js";
+import { clearStored, connect, getStoredToken } from "./net.js";
 import { collectEntry } from "./entry.js";
 import { showDialog } from "./dialog.js";
 import { trackInput } from "./input.js";
@@ -74,7 +74,6 @@ function updateQueueUi(you: StateMessage["you"]): void {
 
 async function start(): Promise<void> {
   const { name, color, password } = await collectEntry({
-    overlay: entryOverlay,
     nameInput,
     passwordInput,
     swatchContainer,
@@ -83,6 +82,10 @@ async function start(): Promise<void> {
 
   const { sendInput, takeOver, requestJoin, acceptOffer, declineOffer } = connect(name, color, password, {
     onIdentity: (identityName) => {
+      // Only hidden once a real identity is confirmed -- a hello can still
+      // come back "already taken" or "already playing elsewhere" instead,
+      // which needs showing on this screen, not over an unentered game.
+      entryOverlay.hidden = true;
       statusEl.textContent = `Playing as ${identityName}`;
     },
     onState: (state) => {
@@ -105,7 +108,14 @@ async function start(): Promise<void> {
         `${takenName} is already being played in another tab. Take over and play here instead?`,
         "confirm",
       ).then((confirmed) => {
-        if (confirmed) takeOver();
+        if (confirmed) {
+          takeOver();
+        } else {
+          // Not this identity, then -- clear it so a retry claims someone
+          // new instead of hitting the same "already playing" prompt again.
+          clearStored();
+          location.reload();
+        }
       });
     },
     onDisconnected: () => {
