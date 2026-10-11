@@ -14,6 +14,17 @@
 
 What's explicitly **not** good-this-week, and so isn't a defect to fix now: passwords/auth, the 16-colour palette, more-than-2-player lobby/queueing, disconnect-timeout flashing, ghost-trail replay, personal participation scoring, a global-stats dashboard, a profanity filter. `README.md` says why each of these can wait.
 
+## What good means for this build (crit 9 scope)
+
+1. Real-time holds on the deployed app, not just in local tests: a change one player makes reaches every other open session within about a second, with no reload. Crit 8's tick loop already broadcasts every tick; this week's bar is that it demonstrably holds live, on the deployed URL, between independent sessions.
+2. One decision about how the app behaves when several people use it at once is made, documented in the repo (`decisions/`), and defensible out loud — including the alternative that was rejected.
+3. The decision this build makes is about player identity across a connection change: what happens when a token that's already live gets used again, either because a second connection shows up while the first is still open, or because the first one actually went away and the token resumes later. `planning.md` §5 designs the fuller version of the second case (a 3-second timeout, a flashing cursor, re-entry through a queue); that queue and timeout are still out of scope this week per the item below, so the decision explicitly includes choosing not to build them yet, not just what to do about a live duplicate.
+4. Everything crit 8 established keeps holding: the 2-player minimum, the real `multiplier(n)` scoring, and per-visitor persistence across restarts and redeploys.
+5. `README.md` and `spec/` stay aligned with what this file says, same as crit 8.
+6. The process bar from crit 8 continues: tests first, commits at each step, `PROCESS.md` and `INPROGRESS.md` grown as the work happens, and this week adds `reflections/crit-9.md`.
+
+What's still explicitly **not** good-this-week, for the same reasons as crit 8: passwords/auth, the 16-colour palette, more-than-2-player lobby/queueing, disconnect-timeout flashing, ghost-trail replay, personal participation scoring, a global-stats dashboard, a profanity filter. The disconnect-timeout/queue design is now also named directly in point 3 above, rather than only implied by the deferred list.
+
 ## Process rules for this build
 
 - **Tests first.** Before the code a `spec/*.test.ts` file exercises gets written, the test itself is written, run, confirmed to fail, and committed. A feature isn't done until that test — and everything earlier — is green again.

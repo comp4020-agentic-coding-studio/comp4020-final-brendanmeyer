@@ -8,10 +8,12 @@ Collective Snake is a cooperative Snake variant: no single player steers the sna
 - the game needs at least two active players to run at all — there is no single-player version, by design: a lone cursor has nothing to average against, so the game simply waits
 - scoring is real: a group-size multiplier applies to every food item collected, rewarding bigger groups rather than tapering off as they grow
 - a run's result is saved, and persists across restarts and redeploys, so coming back later still shows you something
+- every move anyone makes reaches everyone else's screen in well under a second, with no reload
+- an identity only ever drives one cursor at a time: opening the game again while it's already open elsewhere offers to take over, rather than quietly becoming a second player
 
 ## Try it
 
-Open this page, then open it again in a second browser window (or send the link to someone else). With only one session connected you'll see a waiting state; once a second session joins, both cursors start steering the same snake.
+Open this page, then open it again in a different browser, a private/incognito window, or send the link to someone else. With only one session connected you'll see a waiting state; once a second session joins, both cursors start steering the same snake. Opening it again as an ordinary new tab in the same browser won't add a second player — it'll ask whether you want to take over the one you already have open.
 
 ## What good means for this app
 
