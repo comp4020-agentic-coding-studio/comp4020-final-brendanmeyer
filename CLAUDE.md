@@ -25,6 +25,18 @@ What's explicitly **not** good-this-week, and so isn't a defect to fix now: pass
 
 What's still explicitly **not** good-this-week, for the same reasons as crit 8: passwords/auth, the 16-colour palette, more-than-2-player lobby/queueing, disconnect-timeout flashing, ghost-trail replay, personal participation scoring, a global-stats dashboard, a profanity filter. The disconnect-timeout/queue design is now also named directly in point 3 above, rather than only implied by the deferred list.
 
+## What good means for this build (crit 10 scope)
+
+1. Player identity across a connection change gets the full `planning.md` §5 answer, not the placeholder: a 3-second disconnect timeout, a 2-second flashing cursor as visual-only feedback, a run that pauses (state preserved) rather than ends when fewer than 2 active players remain, and a reconnecting token re-entering through the lobby/queue rather than auto-resuming its old slot.
+2. That re-entry needs the neighbours it depends on to actually exist: player colours and their reservation/release rules (§2), the 2-second join-introduction flash for joining a game already running (§4), the 12-active-player capacity cap and spectator mode (§6), and the FIFO join queue with its 5-second claim window and 5-second paused-game resume countdown (§7).
+3. The record-run concept these depend on is made real: deterministic leaderboard tie-break ordering (§19 — collective score descending, chronological priority on a tie), a ghost trail of the current record run visible while playing (§21), historical record replays that survive a new record being set (§21), and a public global-statistics view (§22).
+4. `decisions/0001-identity-across-connection-changes.md` is rewritten in place to carry the new Case 2 answer and why it superseded the earlier one, not left describing behaviour the code no longer has.
+5. Everything crit 8/9 established keeps holding: the 2-player minimum, real `multiplier(n)` scoring, per-visitor persistence, and the Case 1 (duplicate-live-connection) takeover handshake.
+6. `README.md` and `spec/` stay aligned with what this file says, same as crit 8/9. Each piece's "what comes next" bullet moves only once that piece actually ships, not all at once up front.
+7. The process bar continues unchanged: tests first, commits at each meaningful step, `PROCESS.md`/`INPROGRESS.md` grown as the work happens, `pnpm check` green before a step is called shipping.
+
+Still explicitly out of scope, for reasons unrelated to this week's build and unaffected by it: passwords/account auth and cross-device identity reclaim, personal participation scoring (separate from the shared score), and a profanity filter. The 16-colour palette and the lobby/queue/disconnect-timeout/ghost-trail/stats items this file previously listed as deferred (crit 8/9 sections above) are what this section now builds — those sections stay as the historical record of what was scoped for their own crits, not an active restriction anymore.
+
 ## Process rules for this build
 
 - **Tests first.** Before the code a `spec/*.test.ts` file exercises gets written, the test itself is written, run, confirmed to fail, and committed. A feature isn't done until that test — and everything earlier — is green again.
