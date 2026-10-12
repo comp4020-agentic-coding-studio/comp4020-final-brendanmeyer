@@ -1,0 +1,11 @@
+# Crit 9 reflection
+
+**What was the breakthrough that moved the work forward?**
+
+The duplicate-tab bug looked like one bug: opening a second tab quietly became a second player with no flag raised at all. It actually needed two separate fixes, and I did not see that straight away. The waiting-screen copy telling someone to "open another browser window" was genuinely ambiguous (opening a new tab satisfies that) so that just needed clearer words. But clearer copy does not stop someone opening a second tab by accident, or from a different device, expecting their session back. That half needed an actual decision, what should the server do when the same identity shows up twice while the first connection is still open? Writing that choice into `decisions/0001` forced me to name the alternatives: letting both tabs count, kicking the old one silently, rejecting the new one outright, and explain why each fails README's version of nothing needing explaining beyond what id on screen. The chosen answer, asking the visitor directly, only became obvious once the options were presented.
+
+**What did this work change about who I want to be as a software developer?**
+
+This project changed how I think about being a software developer. I realised that writing working code is only one part of the job. Making thoughtful design decisions, anticipating problems, and ensuring the application works reliably for real users are equally important. Initially, I focused heavily on planning the entire system before implementation. However, breaking development into smaller, testable phases taught me the value of incremental progress and maintaining a working application throughout development. I also learned that passing local tests does not necessarily mean an application works correctly in production. Issues involving reconnection, shared game state, and database migrations showed me the importance of testing real-world scenarios rather than relying solely on automated checks. Moving forward, I want to be a developer who prioritises maintainability, reliability, and user experience over simply adding features. I also want to make deliberate technical decisions, understand their trade-offs, and be able to justify them.
+
+
