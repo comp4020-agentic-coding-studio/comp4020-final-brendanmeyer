@@ -159,3 +159,71 @@ it("never resolves to someone else's protected identity when the password is wro
 
   retriever.close();
 });
+
+// Setting a password after the fact: a name claimed with none should still
+// be protectable later, without needing to have planned ahead at claim
+// time. Operates on the sender's own connected identity only -- no target
+// player id in the message at all, consistent with decisions/0002 (no
+// cross-player actions exist in this protocol).
+it("lets a connected, password-less identity set a password, which then protects it", async () => {
+  const name = uniqueName("addpw");
+  const a = await connect();
+  send(a, { t: "hello", name, password: "" });
+  const welcomeA = await nextMessage(a);
+  if (welcomeA.t !== "welcome") throw new Error("unreachable");
+
+  send(a, { t: "setPassword", password: "newsecret" });
+  const setReply = await nextMessage(a);
+  expect(setReply).toMatchObject({ t: "passwordSet", ok: true });
+  a.close();
+
+  // A fresh retrieval attempt with the wrong password must now fail --
+  // before setPassword, any password at all would have retrieved it.
+  const wrong = await connect();
+  send(wrong, { t: "hello", name, password: "guess" });
+  const wrongReply = await nextMessage(wrong);
+  expect(wrongReply.t).toBe("nameTaken");
+  wrong.close();
+
+  // The right (newly-set) password still retrieves it.
+  const right = await connect();
+  send(right, { t: "hello", name, password: "newsecret" });
+  const rightReply = await nextMessage(right);
+  expect(rightReply).toMatchObject({ t: "alreadyConnected", playerId: welcomeA.playerId });
+  right.close();
+});
+
+// Not a change/reset flow -- an identity that already has a password keeps
+// it, and setPassword on it is a no-op refusal, not a silent overwrite.
+it("refuses to set a password on an identity that already has one", async () => {
+  const name = uniqueName("haspw");
+  const a = await connect();
+  send(a, { t: "hello", name, password: "original" });
+  const welcomeA = await nextMessage(a);
+  if (welcomeA.t !== "welcome") throw new Error("unreachable");
+
+  send(a, { t: "setPassword", password: "newone" });
+  const setReply = await nextMessage(a);
+  expect(setReply).toMatchObject({ t: "passwordSet", ok: false, reason: "alreadyHasPassword" });
+  a.close();
+
+  // The original password still works -- it wasn't overwritten.
+  const retriever = await connect();
+  send(retriever, { t: "hello", name, password: "original" });
+  const reply = await nextMessage(retriever);
+  expect(reply).toMatchObject({ t: "alreadyConnected", playerId: welcomeA.playerId });
+  retriever.close();
+});
+
+it("refuses a blank password, since that's the no-password state a name already has", async () => {
+  const name = uniqueName("blankpw");
+  const a = await connect();
+  send(a, { t: "hello", name, password: "" });
+  const welcomeA = await nextMessage(a);
+  if (welcomeA.t !== "welcome") throw new Error("unreachable");
+
+  send(a, { t: "setPassword", password: "" });
+  const setReply = await nextMessage(a);
+  expect(setReply).toMatchObject({ t: "passwordSet", ok: false, reason: "blank" });
+  a.close();
+});

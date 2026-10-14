@@ -44,12 +44,22 @@ export interface DeclineOfferMessage {
   t: "declineOffer";
 }
 
+// Adds a password to the sender's own already-connected identity, only
+// when it currently has none -- this is "protect a name that was claimed
+// without one," not a change/reset flow for an existing password, which
+// stays out of scope (no recovery, no changing it again afterward).
+export interface SetPasswordMessage {
+  t: "setPassword";
+  password: string;
+}
+
 export type ClientMessage =
   | HelloMessage
   | InputMessage
   | RequestJoinMessage
   | AcceptOfferMessage
-  | DeclineOfferMessage;
+  | DeclineOfferMessage
+  | SetPasswordMessage;
 
 export interface WelcomeMessage {
   t: "welcome";
@@ -130,9 +140,20 @@ export interface StateMessage {
   multiplier: number;
 }
 
+// Reply to SetPasswordMessage: ok true once this identity now has a
+// password set; false (with why) if it already had one, or if the
+// password was blank (setting "no password" isn't what this message is
+// for -- that's just the default a name already has until this is used).
+export interface PasswordSetMessage {
+  t: "passwordSet";
+  ok: boolean;
+  reason?: "alreadyHasPassword" | "blank";
+}
+
 export type ServerMessage =
   | WelcomeMessage
   | NameTakenMessage
   | NameInvalidMessage
   | AlreadyConnectedMessage
-  | StateMessage;
+  | StateMessage
+  | PasswordSetMessage;
