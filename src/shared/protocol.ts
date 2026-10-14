@@ -67,6 +67,9 @@ export interface WelcomeMessage {
   playerId: number;
   name: string;
   color: number;
+  // Lets the client know whether to offer "set a password" at all --
+  // without this the client would have to guess, or attempt-and-fail.
+  hasPassword: boolean;
 }
 
 export interface NameTakenMessage {

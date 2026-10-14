@@ -248,3 +248,39 @@ it("refuses a blank password, since that's the no-password state a name already 
   expect(setReply).toMatchObject({ ok: false, reason: "blank" });
   a.close();
 });
+
+// The client can't know in advance whether an identity has a password
+// unless the server tells it -- otherwise the "set a password" button has
+// no way to know when to hide itself. welcome (and the generated-pseudonym
+// equivalent, nameInvalid) carry hasPassword so the client doesn't have to
+// guess or attempt-and-fail.
+it("reports hasPassword:false on a fresh claim, then hasPassword:true after setPassword succeeds", async () => {
+  const name = uniqueName("hasflag");
+  const a = await connect();
+  send(a, { t: "hello", name, password: "" });
+  const welcomeA = await nextMessage(a);
+  if (welcomeA.t !== "welcome") throw new Error("unreachable");
+  expect(welcomeA.hasPassword).toBe(false);
+
+  send(a, { t: "setPassword", password: "flagtest" });
+  await nextMessageOfType(a, "passwordSet");
+  a.close();
+
+  // A later resume (same token) should now report hasPassword:true.
+  const resumed = await connect();
+  send(resumed, { t: "hello", token: welcomeA.token });
+  const resumedWelcome = await nextMessage(resumed);
+  if (resumedWelcome.t !== "welcome") throw new Error("unreachable");
+  expect(resumedWelcome.hasPassword).toBe(true);
+  resumed.close();
+});
+
+it("reports hasPassword:true immediately when claiming with a password", async () => {
+  const name = uniqueName("hasflag2");
+  const a = await connect();
+  send(a, { t: "hello", name, password: "setatclaim" });
+  const welcomeA = await nextMessage(a);
+  if (welcomeA.t !== "welcome") throw new Error("unreachable");
+  expect(welcomeA.hasPassword).toBe(true);
+  a.close();
+});
