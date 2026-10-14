@@ -31,6 +31,10 @@ const playButton = required(document.querySelector<HTMLButtonElement>("#play"), 
 const requestJoinBtn = required(document.querySelector<HTMLButtonElement>("#request-join"), "missing #request-join");
 const acceptOfferBtn = required(document.querySelector<HTMLButtonElement>("#accept-offer"), "missing #accept-offer");
 const declineOfferBtn = required(document.querySelector<HTMLButtonElement>("#decline-offer"), "missing #decline-offer");
+const passwordUi = required(document.querySelector<HTMLElement>("#password-ui"), "missing #password-ui");
+const setPasswordInput = required(document.querySelector<HTMLInputElement>("#set-password-input"), "missing #set-password-input");
+const setPasswordBtn = required(document.querySelector<HTMLButtonElement>("#set-password-btn"), "missing #set-password-btn");
+const passwordStatusEl = required(document.querySelector<HTMLElement>("#password-status"), "missing #password-status");
 const queueStatusText = document.createTextNode("");
 required(document.querySelector<HTMLElement>("#queue-status"), "missing #queue-status").prepend(queueStatusText);
 const dialogElements = {
@@ -80,13 +84,19 @@ async function start(): Promise<void> {
     playButton,
   });
 
-  const { sendInput, takeOver, requestJoin, acceptOffer, declineOffer } = connect(name, color, password, {
+  const { sendInput, takeOver, requestJoin, acceptOffer, declineOffer, setPassword } = connect(name, color, password, {
     onIdentity: (identityName) => {
       // Only hidden once a real identity is confirmed -- a hello can still
       // come back "already taken" or "already playing elsewhere" instead,
       // which needs showing on this screen, not over an unentered game.
       entryOverlay.hidden = true;
       statusEl.textContent = `Playing as ${identityName}`;
+      // The client has no way to know in advance whether this identity
+      // already has a password -- setPassword safely refuses either way,
+      // so the control just stays offered; a successful set or an
+      // "already has one" reply both resolve the question for this
+      // session (see onPasswordSet below).
+      passwordUi.hidden = false;
     },
     onState: (state) => {
       latestState = state;
@@ -129,11 +139,24 @@ async function start(): Promise<void> {
         location.reload();
       });
     },
+    onPasswordSet: (ok, reason) => {
+      if (ok) {
+        passwordStatusEl.textContent = "Password set.";
+        passwordUi.hidden = true;
+      } else if (reason === "alreadyHasPassword") {
+        passwordStatusEl.textContent = "This name already has a password.";
+        passwordUi.hidden = true;
+      } else {
+        passwordStatusEl.textContent = "Enter a password first.";
+      }
+      setPasswordInput.value = "";
+    },
   });
 
   requestJoinBtn.addEventListener("click", () => requestJoin());
   acceptOfferBtn.addEventListener("click", () => acceptOffer());
   declineOfferBtn.addEventListener("click", () => declineOffer());
+  setPasswordBtn.addEventListener("click", () => setPassword(setPasswordInput.value));
 
   trackInput(canvas, (pos) => sendInput(pos.x, pos.y));
 }

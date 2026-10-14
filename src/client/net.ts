@@ -86,6 +86,10 @@ export interface NetHandlers {
   // The server closed this socket -- most likely another tab took over.
   onDisconnected: () => void;
   onNameTaken: () => void;
+  // Reply to Net.setPassword(). reason is only set on a refusal
+  // ("alreadyHasPassword" | "blank") -- this doesn't change a password
+  // that's already set, only adds one where there was none.
+  onPasswordSet: (ok: boolean, reason?: string) => void;
 }
 
 export interface Net {
@@ -94,6 +98,7 @@ export interface Net {
   requestJoin: () => void;
   acceptOffer: () => void;
   declineOffer: () => void;
+  setPassword: (password: string) => void;
 }
 
 export function connect(name: string, color: number, password: string, handlers: NetHandlers): Net {
@@ -125,6 +130,8 @@ export function connect(name: string, color: number, password: string, handlers:
       handlers.onNameTaken();
     } else if (msg.t === "state") {
       handlers.onState(msg);
+    } else if (msg.t === "passwordSet") {
+      handlers.onPasswordSet(msg.ok, msg.reason);
     }
   });
 
@@ -142,5 +149,6 @@ export function connect(name: string, color: number, password: string, handlers:
     requestJoin: () => send({ t: "requestJoin" }),
     acceptOffer: () => send({ t: "acceptOffer" }),
     declineOffer: () => send({ t: "declineOffer" }),
+    setPassword: (password) => send({ t: "setPassword", password }),
   };
 }
