@@ -94,3 +94,69 @@ it("retrieves a name claimed with a blank password using any password", async ()
   a.close();
   b.close();
 });
+
+// The real client always sends whatever reconnect token it already has
+// stored, on every hello, regardless of what name was typed into the entry
+// box (src/client/net.ts's sendHello). A visitor retrieving a
+// password-protected name is very often doing it from a browser that
+// already holds a token for some OTHER identity (even an earlier,
+// unrelated, auto-generated pseudonym) -- not a token-less browser, which
+// is the only case the tests above actually cover. findExistingPlayer must
+// not let an unrelated token win outright over a correctly-password-proven
+// name; the name+password request should be resolved on its own terms.
+it("retrieves a password-protected name by name+password even when the request also carries an unrelated token", async () => {
+  const ownerName = uniqueName("pwowner2");
+  const owner = await connect();
+  send(owner, { t: "hello", name: ownerName, password: "secret123" });
+  const ownerWelcome = await nextMessage(owner);
+  if (ownerWelcome.t !== "welcome") throw new Error("unreachable");
+  owner.close();
+
+  // A second, unrelated identity, fully disconnected before the retrieval
+  // attempt -- its token is stale baggage from an earlier visit, not a live
+  // connection anything could "take over" from.
+  const bystander = await connect();
+  send(bystander, { t: "hello", name: uniqueName("bystander") });
+  const bystanderWelcome = await nextMessage(bystander);
+  if (bystanderWelcome.t !== "welcome") throw new Error("unreachable");
+  bystander.close();
+
+  // The bystander's browser now tries to retrieve ownerName with the
+  // correct password, while still carrying its own unrelated token --
+  // exactly what src/client/net.ts's sendHello always does.
+  const retriever = await connect();
+  send(retriever, { t: "hello", token: bystanderWelcome.token, name: ownerName, password: "secret123" });
+  const result = await nextMessage(retriever);
+  expect(result).toMatchObject({ t: "alreadyConnected", playerId: ownerWelcome.playerId, name: ownerName });
+
+  retriever.close();
+});
+
+// The same request, but with the WRONG password -- must not fall back to
+// resuming the unrelated token's own identity silently. Either a clear
+// rejection, or (since the name is legitimately claimed and protected)
+// never resolving to the owner's account.
+it("does not fall back to an unrelated stored token when the password for the requested name is wrong", async () => {
+  const ownerName = uniqueName("pwowner3");
+  const owner = await connect();
+  send(owner, { t: "hello", name: ownerName, password: "secret123" });
+  const ownerWelcome = await nextMessage(owner);
+  if (ownerWelcome.t !== "welcome") throw new Error("unreachable");
+  owner.close();
+
+  const bystander = await connect();
+  send(bystander, { t: "hello", name: uniqueName("bystander2") });
+  const bystanderWelcome = await nextMessage(bystander);
+  if (bystanderWelcome.t !== "welcome") throw new Error("unreachable");
+  bystander.close();
+
+  const retriever = await connect();
+  send(retriever, { t: "hello", token: bystanderWelcome.token, name: ownerName, password: "WRONG" });
+  const result = await nextMessage(retriever);
+  // Must not silently resume the bystander's own unrelated identity instead
+  // of acknowledging the retrieval attempt failed.
+  expect(result).not.toMatchObject({ t: "welcome", playerId: bystanderWelcome.playerId });
+  expect(result.t).toBe("nameTaken");
+
+  retriever.close();
+});
