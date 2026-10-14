@@ -6,7 +6,7 @@ import type { IncomingMessage, Server } from "node:http";
 import type { Duplex } from "node:stream";
 import { WebSocketServer, type WebSocket } from "ws";
 import type { ClientMessage, ServerMessage } from "../shared/protocol.ts";
-import { claimName, findExistingPlayer, renameName } from "./db/repo.ts";
+import { claimName, findExistingPlayer, renameName, setPasswordIfNone } from "./db/repo.ts";
 import { createColorState, release, reserve } from "./game/colors.ts";
 import { MAX_ACTIVE, hasCursor, nextRole, occupiesSlot, type Role } from "./game/roles.ts";
 import { accept, createQueueState, dropOffer, enqueue, expireIfNeeded, makeOfferIfNeeded } from "./game/queue.ts";
@@ -335,6 +335,17 @@ function handleMessage(socket: WebSocket, raw: string): void {
         logEvent("role_changed", conn.playerId, { playerId: conn.playerId, name: conn.name, from: "offered", to: "spectator" });
       }
     }
+    return;
+  }
+
+  if (msg.t === "setPassword") {
+    const conn = connections.get(socket);
+    if (!conn) return;
+    const result = setPasswordIfNone(conn.playerId, msg.password);
+    if (result.ok) {
+      logEvent("password_set", conn.playerId, { playerId: conn.playerId, name: conn.name });
+    }
+    send(socket, result.ok ? { t: "passwordSet", ok: true } : { t: "passwordSet", ok: false, reason: result.reason });
   }
 }
 

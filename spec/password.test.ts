@@ -31,6 +31,27 @@ function nextMessage(socket: WebSocket): Promise<ServerMessage> {
   });
 }
 
+// A connection that's been live a while (anything past its initial hello)
+// can have a "state" broadcast land between a request and its actual
+// reply -- the game loop ticks independently of whatever's being tested.
+// Skips any number of those to find the next message of a specific type.
+function nextMessageOfType<T extends ServerMessage["t"]>(
+  socket: WebSocket,
+  type: T,
+): Promise<Extract<ServerMessage, { t: T }>> {
+  return new Promise((resolve, reject) => {
+    function onMessage(data: WebSocket.RawData): void {
+      const msg = JSON.parse(data.toString()) as ServerMessage;
+      if (msg.t === type) {
+        socket.off("message", onMessage);
+        resolve(msg as Extract<ServerMessage, { t: T }>);
+      }
+    }
+    socket.on("message", onMessage);
+    socket.once("error", reject);
+  });
+}
+
 // See spec/pseudonym.test.ts's uniqueName comment -- a fixed literal name
 // permanently claims that row against the same long-lived local dev server.
 function uniqueName(prefix: string): string {
@@ -173,8 +194,8 @@ it("lets a connected, password-less identity set a password, which then protects
   if (welcomeA.t !== "welcome") throw new Error("unreachable");
 
   send(a, { t: "setPassword", password: "newsecret" });
-  const setReply = await nextMessage(a);
-  expect(setReply).toMatchObject({ t: "passwordSet", ok: true });
+  const setReply = await nextMessageOfType(a, "passwordSet");
+  expect(setReply).toMatchObject({ ok: true });
   a.close();
 
   // A fresh retrieval attempt with the wrong password must now fail --
@@ -203,8 +224,8 @@ it("refuses to set a password on an identity that already has one", async () => 
   if (welcomeA.t !== "welcome") throw new Error("unreachable");
 
   send(a, { t: "setPassword", password: "newone" });
-  const setReply = await nextMessage(a);
-  expect(setReply).toMatchObject({ t: "passwordSet", ok: false, reason: "alreadyHasPassword" });
+  const setReply = await nextMessageOfType(a, "passwordSet");
+  expect(setReply).toMatchObject({ ok: false, reason: "alreadyHasPassword" });
   a.close();
 
   // The original password still works -- it wasn't overwritten.
@@ -223,7 +244,7 @@ it("refuses a blank password, since that's the no-password state a name already 
   if (welcomeA.t !== "welcome") throw new Error("unreachable");
 
   send(a, { t: "setPassword", password: "" });
-  const setReply = await nextMessage(a);
-  expect(setReply).toMatchObject({ t: "passwordSet", ok: false, reason: "blank" });
+  const setReply = await nextMessageOfType(a, "passwordSet");
+  expect(setReply).toMatchObject({ ok: false, reason: "blank" });
   a.close();
 });

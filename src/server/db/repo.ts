@@ -150,6 +150,25 @@ export function findPlayerByToken(token: string): Player | undefined {
     | undefined;
 }
 
+export type SetPasswordResult = { ok: true } | { ok: false; reason: "alreadyHasPassword" | "blank" };
+
+// Protects a name that was claimed with no password, after the fact --
+// not a change/reset flow for one that already has a password (CLAUDE.md's
+// "no changing a password later" still holds for an *existing* password;
+// this only fills in a password where none was ever set). The WHERE clause
+// itself enforces "only when currently none", so there's no read-then-write
+// race between checking and setting it.
+export function setPasswordIfNone(playerId: number, password: string): SetPasswordResult {
+  if (!password) return { ok: false, reason: "blank" };
+  const hashed = hashPassword(password);
+  if (!hashed) return { ok: false, reason: "blank" };
+  const info = db
+    .prepare("UPDATE players SET password_hash = ?, password_salt = ? WHERE id = ? AND password_hash IS NULL")
+    .run(hashed.hash, hashed.salt, playerId);
+  if (info.changes === 0) return { ok: false, reason: "alreadyHasPassword" };
+  return { ok: true };
+}
+
 export interface FinishedRun {
   startedAt: number;
   endedAt: number;
