@@ -12,6 +12,7 @@ export interface Player {
   id: number;
   name: string;
   token: string;
+  hasPassword: boolean;
 }
 
 interface PlayerRow extends Player {
@@ -72,7 +73,7 @@ export function findExistingPlayer(token: string | undefined, name: string | und
   if (isValidName(trimmed)) {
     const row = findPlayerRowByNameLower(trimmed.toLowerCase());
     if (row && row.passwordHash !== null && verifyPassword(row, password)) {
-      return { id: row.id, name: row.name, token: row.token };
+      return { id: row.id, name: row.name, token: row.token, hasPassword: true };
     }
   }
   if (token) {
@@ -82,7 +83,7 @@ export function findExistingPlayer(token: string | undefined, name: string | und
   if (!isValidName(trimmed)) return undefined;
   const row = findPlayerRowByNameLower(trimmed.toLowerCase());
   if (!row || !verifyPassword(row, password)) return undefined;
-  return { id: row.id, name: row.name, token: row.token };
+  return { id: row.id, name: row.name, token: row.token, hasPassword: row.passwordHash !== null };
 }
 
 export type ClaimResult =
@@ -110,7 +111,7 @@ export function claimName(requestedName: string | undefined, password: string): 
     const info = insert.run(name, nameLower, token, Date.now(), hashed?.hash ?? null, hashed?.salt ?? null);
     return {
       ok: true,
-      player: { id: Number(info.lastInsertRowid), name, token },
+      player: { id: Number(info.lastInsertRowid), name, token, hasPassword: hashed !== null },
       assignedName: wasValid ? undefined : name,
     };
   } catch (err) {
@@ -145,9 +146,12 @@ export function renameName(playerId: number, requestedName: string): RenameResul
 }
 
 export function findPlayerByToken(token: string): Player | undefined {
-  return db.prepare("SELECT id, name, token FROM players WHERE token = ?").get(token) as
-    | Player
-    | undefined;
+  const row = db
+    .prepare("SELECT id, name, token, password_hash AS passwordHash FROM players WHERE token = ?")
+    .get(token) as (Omit<Player, "hasPassword"> & { passwordHash: string | null }) | undefined;
+  if (!row) return undefined;
+  const { passwordHash, ...player } = row;
+  return { ...player, hasPassword: passwordHash !== null };
 }
 
 export type SetPasswordResult = { ok: true } | { ok: false; reason: "alreadyHasPassword" | "blank" };

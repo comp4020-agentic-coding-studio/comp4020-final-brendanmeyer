@@ -218,6 +218,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
       // null only if every one of the 16 colours is somehow already
       // reserved, which can't happen at the 12-active-player cap.
       color: colorIndex ?? 0,
+      hasPassword: existing.hasPassword,
     });
     return;
   }
@@ -266,6 +267,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
     playerId: result.player.id,
     name: result.player.name,
     color: colorIndex ?? 0,
+    hasPassword: result.player.hasPassword,
   });
 }
 

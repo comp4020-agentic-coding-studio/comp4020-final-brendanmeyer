@@ -264,15 +264,19 @@ it("reports hasPassword:false on a fresh claim, then hasPassword:true after setP
 
   send(a, { t: "setPassword", password: "flagtest" });
   await nextMessageOfType(a, "passwordSet");
-  a.close();
 
-  // A later resume (same token) should now report hasPassword:true.
+  // The original connection hasn't closed yet from the server's point of
+  // view (a clean close starts a 2s leaving flash, not an instant removal
+  // -- decisions/0001), so a same-token resume right after needs the same
+  // takeover confirmation every other resume-after-close case in this
+  // suite goes through.
   const resumed = await connect();
-  send(resumed, { t: "hello", token: welcomeA.token });
+  send(resumed, { t: "hello", token: welcomeA.token, takeover: true });
   const resumedWelcome = await nextMessage(resumed);
   if (resumedWelcome.t !== "welcome") throw new Error("unreachable");
   expect(resumedWelcome.hasPassword).toBe(true);
   resumed.close();
+  a.close();
 });
 
 it("reports hasPassword:true immediately when claiming with a password", async () => {
