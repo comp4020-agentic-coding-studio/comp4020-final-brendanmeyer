@@ -38,6 +38,12 @@ What's still explicitly **not** good-this-week, for the same reasons as crit 8: 
 
 Still explicitly out of scope, for reasons unrelated to this week's build and unaffected by it: personal participation scoring (separate from the shared score), and a profanity filter. The 16-colour palette, lobby/queue/disconnect-timeout/ghost-trail/stats items this file previously listed as deferred (crit 8/9 sections above), and password-based cross-device retrieval (also previously deferred) are what this section now builds — those sections stay as the historical record of what was scoped for their own crits, not an active restriction anymore.
 
+## What good means for this build (crit 10's actual published spec)
+
+The section above records a real scope override made during the crit 9 session, before this week's real crit 10 spec was published. That spec, pulled from the course site, asks for something unrelated to the disconnect/queue/colour work above: this app is multi-user by the brief's own definition — two or more people, each in their own browser, act on shared state, and the app tells them apart — and that stays true and deployed by the cutoff. What each person may see and change is checked on the server, and that decision is written down in the repo with why. The app logs who did what, server-side, and that logging outlives the crit itself, not just the demo. At the crit, two pod members use the deployed app from its URL alone, in separate Chrome profiles, while the presenter narrates entirely from the logs — no clicking through the UI themselves. The usual process bar continues: commits that grow with the work, `PROCESS.md`, and `reflections/crit-10.md`.
+
+What this means concretely: every mutating action the protocol accepts already resolves to the caller's own identity by construction — no message shape can even name another player — so the server-side check this spec asks for is mostly a documented confirmation (`decisions/0002-server-side-permission-checks.md`) rather than new enforcement code layered on top. The new build this week is the audit log itself: a persistent `events` table on the one Fly volume, and `console.log` lines a presenter tails live with `flyctl logs -a <repo>`, covering every identity, queue, role, and scoring transition the app makes.
+
 ## Process rules for this build
 
 - **Tests first.** Before the code a `spec/*.test.ts` file exercises gets written, the test itself is written, run, confirmed to fail, and committed. A feature isn't done until that test — and everything earlier — is green again.
