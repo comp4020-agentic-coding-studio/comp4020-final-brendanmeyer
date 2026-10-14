@@ -12,6 +12,7 @@ import { MAX_ACTIVE, hasCursor, nextRole, occupiesSlot, type Role } from "./game
 import { accept, createQueueState, dropOffer, enqueue, expireIfNeeded, makeOfferIfNeeded } from "./game/queue.ts";
 import { activateRole, admit } from "./game/roster.ts";
 import { getState, type Vec2 } from "./game/state.ts";
+import { logEvent } from "./log.ts";
 
 const colorState = createColorState();
 const queueState = createQueueState();
@@ -84,10 +85,22 @@ export function sweep(now: number): void {
   for (const conn of [...connections.values()]) {
     const decision = nextRole(conn.role, conn.roleChangedAt, conn.lastActivityAt, now);
     if (decision === "removed") {
+      // The disconnect itself was already logged when this connection
+      // entered "leaving" (either here, via timeout below, or in the
+      // socket's own "close" handler for a clean disconnect) -- this is
+      // just that flash window finishing, not a second disconnect.
       connections.delete(conn.socket);
       release(colorState, conn.playerId);
       if (conn.socket.readyState === conn.socket.OPEN) conn.socket.close();
+      logEvent("role_changed", conn.playerId, { playerId: conn.playerId, name: conn.name, from: conn.role, to: "removed" });
     } else if (decision !== null) {
+      // nextRole only ever returns "leaving" for a silent timeout -- a
+      // clean close is handled directly in the "close" event below, never
+      // through this path.
+      if (decision === "leaving") {
+        logEvent("player_disconnected", conn.playerId, { playerId: conn.playerId, name: conn.name, reason: "timeout" });
+      }
+      logEvent("role_changed", conn.playerId, { playerId: conn.playerId, name: conn.name, from: conn.role, to: decision });
       conn.role = decision;
       conn.roleChangedAt = now;
     }
@@ -97,6 +110,8 @@ export function sweep(now: number): void {
   if (expired) {
     const conn = findConnectionByPlayerId(expired.playerId);
     if (conn) {
+      logEvent("queue_offer_declined", conn.playerId, { playerId: conn.playerId, name: conn.name, reason: "expired" });
+      logEvent("role_changed", conn.playerId, { playerId: conn.playerId, name: conn.name, from: "offered", to: "spectator" });
       conn.role = "spectator";
       conn.roleChangedAt = now;
     }
@@ -107,6 +122,8 @@ export function sweep(now: number): void {
     if (offered) {
       const conn = findConnectionByPlayerId(offered.playerId);
       if (conn) {
+        logEvent("queue_offer_made", conn.playerId, { playerId: conn.playerId, name: conn.name });
+        logEvent("role_changed", conn.playerId, { playerId: conn.playerId, name: conn.name, from: conn.role, to: "offered" });
         conn.role = "offered";
         conn.roleChangedAt = now;
       }
@@ -129,6 +146,7 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
   if (existing) {
     const live = findConnectionByPlayerId(existing.id);
     if (live && !msg.takeover) {
+      logEvent("player_duplicate_detected", existing.id, { playerId: existing.id, name: existing.name });
       send(socket, {
         t: "alreadyConnected",
         token: existing.token,
@@ -147,7 +165,10 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
     let name = existing.name;
     if (requestedName && requestedName.toLowerCase() !== existing.name.toLowerCase()) {
       const renamed = renameName(existing.id, requestedName);
-      if (renamed.ok) name = renamed.name;
+      if (renamed.ok) {
+        logEvent("player_renamed", existing.id, { playerId: existing.id, from: name, to: renamed.name });
+        name = renamed.name;
+      }
     }
 
     // A confirmed takeover carries the same identity's colour -- and
@@ -165,6 +186,17 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
       // finds both connections live for the same playerId.
       connections.delete(live.socket);
       live.socket.close();
+      logEvent("player_takeover", existing.id, { playerId: existing.id, name });
+      logEvent("role_changed", existing.id, { playerId: existing.id, name, from: live.role, to: role });
+    } else {
+      // The hello resolved to this identity either by the token it
+      // carried (a genuine reconnect) or by a validly-formed name plus a
+      // matching password (planning.md's cross-device retrieval) -- worth
+      // telling apart in the log since they're different stories about
+      // the same visitor.
+      const mode = msg.token && existing.token === msg.token ? "resumed" : "retrieved";
+      logEvent("player_connected", existing.id, { playerId: existing.id, name, mode });
+      logEvent("role_changed", existing.id, { playerId: existing.id, name, from: null, to: role });
     }
 
     connections.set(socket, {
@@ -201,6 +233,9 @@ function handleHello(socket: WebSocket, msg: Extract<ClientMessage, { t: "hello"
   // null only if every one of the 16 colours is somehow already reserved,
   // which can't happen at the 12-active-player cap.
   const colorIndex = role === "spectator" ? null : (reserve(colorState, result.player.id, msg.color) ?? 0);
+
+  logEvent("player_connected", result.player.id, { playerId: result.player.id, name: result.player.name, mode: "claimed" });
+  logEvent("role_changed", result.player.id, { playerId: result.player.id, name: result.player.name, from: null, to: role });
 
   connections.set(socket, {
     socket,
@@ -264,6 +299,9 @@ function handleMessage(socket: WebSocket, raw: string): void {
       conn.role = "queued";
       conn.roleChangedAt = Date.now();
       enqueue(queueState, { playerId: conn.playerId });
+      const position = queuePositionOf(conn.playerId);
+      logEvent("queue_joined", conn.playerId, { playerId: conn.playerId, name: conn.name, position: position?.position ?? null });
+      logEvent("role_changed", conn.playerId, { playerId: conn.playerId, name: conn.name, from: "spectator", to: "queued" });
     }
     return;
   }
@@ -276,9 +314,11 @@ function handleMessage(socket: WebSocket, raw: string): void {
         // Same join-role decision as any other join (spec/join-intro.test.ts):
         // the game being "running" still means an introduction, not an
         // instant jump into active play.
+        const from = conn.role;
         conn.role = activateRole(getState().status, getState().pausedWithRun);
         conn.roleChangedAt = Date.now();
         conn.colorIndex = reserve(colorState, conn.playerId, undefined);
+        logEvent("role_changed", conn.playerId, { playerId: conn.playerId, name: conn.name, from, to: conn.role });
       }
     }
     return;
@@ -291,6 +331,8 @@ function handleMessage(socket: WebSocket, raw: string): void {
       if (dropped) {
         conn.role = "spectator";
         conn.roleChangedAt = Date.now();
+        logEvent("queue_offer_declined", conn.playerId, { playerId: conn.playerId, name: conn.name, reason: "declined" });
+        logEvent("role_changed", conn.playerId, { playerId: conn.playerId, name: conn.name, from: "offered", to: "spectator" });
       }
     }
   }
@@ -330,9 +372,15 @@ export function attachWebSocketServer(server: Server): void {
       const conn = connections.get(socket);
       if (!conn) return; // already removed (e.g. a confirmed takeover's delete-before-close)
       if (hasCursor(conn.role)) {
+        logEvent("player_disconnected", conn.playerId, { playerId: conn.playerId, name: conn.name, reason: "closed" });
+        logEvent("role_changed", conn.playerId, { playerId: conn.playerId, name: conn.name, from: conn.role, to: "leaving" });
         conn.role = "leaving";
         conn.roleChangedAt = Date.now();
       } else {
+        // A spectator/queued/offered connection has no cursor and so no
+        // leaving flash to animate -- it's removed outright, but the
+        // disconnect itself is still worth a line in the log.
+        logEvent("player_disconnected", conn.playerId, { playerId: conn.playerId, name: conn.name, reason: "closed" });
         connections.delete(socket);
       }
     });

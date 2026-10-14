@@ -12,6 +12,7 @@ import { buildYourView, countsTowardSimulation, hasCursor } from "./roles.ts";
 import type { ServerMessage, StateMessage, YourView } from "../../shared/protocol.ts";
 import { centroid } from "./centroid.ts";
 import { eatsFood, spawnFood } from "./food.ts";
+import { logEvent } from "../log.ts";
 import { createReplayBuffer, maybeSample, takeSamples } from "./replay.ts";
 import { advance, hitsSelf, hitsWall, steer } from "./snake.ts";
 import { freshState, GAME_OVER_RESET_MS, getState, setState, SNAKE_SPEED, TICK_MS } from "./state.ts";
@@ -77,9 +78,10 @@ function buildYou(conn: Connection, now: number): YourView {
 
 function finalizeRun(active: Connection[]): void {
   const state = getState();
+  const endedAt = Date.now();
   const { runId, isRecord } = recordRun({
     startedAt: runStartedAt,
-    endedAt: Date.now(),
+    endedAt,
     rawScore: state.rawScore,
     collectiveScore: state.collectiveScore,
     peakPlayers: peakPlayersThisRun,
@@ -89,6 +91,15 @@ function finalizeRun(active: Connection[]): void {
   });
   const samples = takeSamples(replayBuffer);
   if (isRecord) saveReplaySamples(runId, samples);
+  logEvent("run_finished", null, {
+    runId,
+    startedAt: runStartedAt,
+    endedAt,
+    rawScore: state.rawScore,
+    collectiveScore: state.collectiveScore,
+    isRecord,
+    players: active.map((c) => ({ playerId: c.playerId, name: c.name })),
+  });
   setState({ ...state, status: "gameover" });
   setTimeout(() => {
     setState(freshState());
@@ -148,11 +159,15 @@ function tick(): void {
   const grow = eatsFood(newHead, state.food);
   if (grow) {
     foodEventsThisRun += 1;
-    state = {
-      ...state,
-      rawScore: state.rawScore + 100,
-      collectiveScore: state.collectiveScore + foodEventScore(n),
-    };
+    const rawScore = state.rawScore + 100;
+    const collectiveScore = state.collectiveScore + foodEventScore(n);
+    logEvent("food_eaten", null, {
+      players: active.map((c) => ({ playerId: c.playerId, name: c.name })),
+      rawScore,
+      collectiveScore,
+      n,
+    });
+    state = { ...state, rawScore, collectiveScore };
   }
 
   const snake = advance(state.snake, newHead, grow);
