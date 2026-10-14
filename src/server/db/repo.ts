@@ -58,15 +58,27 @@ function findPlayerRowByNameLower(nameLower: string): PlayerRow | undefined {
 }
 
 // Resolves an already-connected identity before falling through to a fresh
-// claim: a live token wins outright (password isn't even checked), and
-// failing that, a validly-formed, already-claimed name with a matching
-// password retrieves it from a device that doesn't hold its token.
+// claim. A password-protected name proven with the *correct* password is an
+// unambiguous, deliberate retrieval request -- it can't be supplied by
+// accident -- so it's checked first and wins outright, even over a token
+// the request happens to also carry (the real client always sends whatever
+// token it has stored, which is very often a stale, unrelated identity from
+// an earlier visit, not evidence the visitor wants that account instead).
+// Only once that's ruled out does an ordinary token resume apply, and only
+// after that does a plain, unprotected name collision fall through to
+// renameName's existing "keep what you have" behaviour.
 export function findExistingPlayer(token: string | undefined, name: string | undefined, password: string): Player | undefined {
+  const trimmed = (name ?? "").trim();
+  if (isValidName(trimmed)) {
+    const row = findPlayerRowByNameLower(trimmed.toLowerCase());
+    if (row && row.passwordHash !== null && verifyPassword(row, password)) {
+      return { id: row.id, name: row.name, token: row.token };
+    }
+  }
   if (token) {
     const byToken = findPlayerByToken(token);
     if (byToken) return byToken;
   }
-  const trimmed = (name ?? "").trim();
   if (!isValidName(trimmed)) return undefined;
   const row = findPlayerRowByNameLower(trimmed.toLowerCase());
   if (!row || !verifyPassword(row, password)) return undefined;
