@@ -3,6 +3,7 @@
 // finished run's score, linked to whoever played it.
 
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import type { DatabaseSync } from "node:sqlite";
 import { db } from "./index.ts";
 import { isNewRecord, sortRecords } from "../../shared/leaderboard.ts";
 import type { ReplaySample } from "../game/replay.ts";
@@ -316,4 +317,30 @@ export function getSummary(token: string | null): Summary {
   }
 
   return { yourLastRun, allTimeBest: best ?? 0, totalRuns };
+}
+
+export interface EventRow {
+  id: number;
+  ts: number;
+  type: string;
+  playerId: number | null;
+  details: Record<string, unknown>;
+}
+
+// Crit 10's audit log: "who did what," server-side, persisted beyond the
+// crit session. Takes an explicit DatabaseSync (like applySchema) rather
+// than closing over the module singleton, so src/server/log.ts's own tests
+// can exercise it against a throwaway DB, the same pattern
+// spec/db-migration.test.ts already established.
+export function insertEvent(target: DatabaseSync, type: string, playerId: number | null, details: Record<string, unknown>): void {
+  target
+    .prepare("INSERT INTO events (ts, type, player_id, details) VALUES (?, ?, ?, ?)")
+    .run(Date.now(), type, playerId, JSON.stringify(details));
+}
+
+export function listEvents(target: DatabaseSync, limit: number): EventRow[] {
+  const rows = target
+    .prepare("SELECT id, ts, type, player_id AS playerId, details FROM events ORDER BY id DESC LIMIT ?")
+    .all(limit) as unknown as { id: number; ts: number; type: string; playerId: number | null; details: string }[];
+  return rows.map((row) => ({ ...row, details: JSON.parse(row.details) }));
 }

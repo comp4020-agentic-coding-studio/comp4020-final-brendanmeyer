@@ -82,4 +82,19 @@ export function applySchema(db: DatabaseSync): void {
   // rule as a fresh claim with a blank password).
   addColumnIfMissing(db, "players", "password_hash", "TEXT");
   addColumnIfMissing(db, "players", "password_salt", "TEXT");
+
+  // Crit 10: a server-side audit log, "who did what," that outlives the
+  // crit session itself -- the one Fly volume at /data is this app's only
+  // durable store, so that's where persistence has to live. Brand new
+  // table, so CREATE TABLE IF NOT EXISTS is the whole migration story, the
+  // same as run_samples above -- no ALTER TABLE risk like runs/players had.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS events (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts        INTEGER NOT NULL,
+      type      TEXT NOT NULL,
+      player_id INTEGER,
+      details   TEXT NOT NULL
+    )
+  `);
 }
