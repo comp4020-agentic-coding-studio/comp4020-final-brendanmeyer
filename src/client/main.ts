@@ -36,6 +36,9 @@ const declineOfferBtn = required(document.querySelector<HTMLButtonElement>("#dec
 const setPasswordBtn = required(document.querySelector<HTMLButtonElement>("#set-password-btn"), "missing #set-password-btn");
 const changeUserBtn = required(document.querySelector<HTMLButtonElement>("#change-user-btn"), "missing #change-user-btn");
 const statsBtn = required(document.querySelector<HTMLButtonElement>("#stats-btn"), "missing #stats-btn");
+const helpBtn = required(document.querySelector<HTMLButtonElement>("#help-btn"), "missing #help-btn");
+const helpOverlay = required(document.querySelector<HTMLElement>("#help-dialog"), "missing #help-dialog overlay");
+const helpCloseBtn = required(document.querySelector<HTMLButtonElement>("#help-dialog-close"), "missing #help-dialog-close");
 const queueStatusText = document.createTextNode("");
 required(document.querySelector<HTMLElement>("#queue-status"), "missing #queue-status").prepend(queueStatusText);
 const dialogElements = {
@@ -86,6 +89,16 @@ window.addEventListener("keydown", (e) => {
   const key = e.key.toLowerCase();
   if (key === "g") ghostState.enabled = !ghostState.enabled;
   if (key === "c") showCentroid = !showCentroid;
+});
+
+// Static reference content, not tied to any connection state -- wired
+// outside start() the same way setupFullscreen already is, so it works
+// before an identity is even confirmed.
+helpBtn.addEventListener("click", () => {
+  helpOverlay.hidden = false;
+});
+helpCloseBtn.addEventListener("click", () => {
+  helpOverlay.hidden = true;
 });
 
 function updateQueueUi(you: StateMessage["you"]): void {

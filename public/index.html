@@ -9,7 +9,7 @@
       main { display: flex; flex-direction: column; height: 100%; }
       header { padding: 0.75rem 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; }
       header a { color: #93c5fd; }
-      #fullscreen, #request-join, #accept-offer, #decline-offer, #set-password-btn, #change-user-btn, #stats-btn { background: none; border: 1px solid #374151; color: #e5e7eb; border-radius: 4px; padding: 0.15rem 0.5rem; font: inherit; cursor: pointer; }
+      #fullscreen, #request-join, #accept-offer, #decline-offer, #set-password-btn, #change-user-btn, #stats-btn, #help-btn { background: none; border: 1px solid #374151; color: #e5e7eb; border-radius: 4px; padding: 0.15rem 0.5rem; font: inherit; cursor: pointer; }
       #game { flex: 1; width: 100%; display: block; touch-action: none; }
       #last-run { padding: 0 1rem 0.75rem; font-size: 0.9rem; color: #9ca3af; }
       #entry { position: fixed; inset: 0; background: #0b1021; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; }
@@ -69,6 +69,19 @@
         </div>
       </div>
     </div>
+    <div id="help-dialog" class="dialog-overlay" hidden>
+      <div class="dialog-box">
+        <h2 style="margin: 0; font-size: 1rem; color: #9ca3af;">Keyboard shortcuts</h2>
+        <dl style="display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; margin: 0;">
+          <dt>WASD / arrow keys</dt><dd>move your cursor</dd>
+          <dt>G</dt><dd>toggle the record-run ghost trail</dd>
+          <dt>C</dt><dd>toggle the shared centroid marker</dd>
+        </dl>
+        <div class="dialog-buttons">
+          <button id="help-dialog-close" type="button">Close</button>
+        </div>
+      </div>
+    </div>
     <div id="stats-dialog" class="dialog-overlay" hidden>
       <div class="dialog-box">
         <h2>Global stats</h2>
@@ -93,6 +106,7 @@
         <span id="status">Connecting…</span>
         <span id="score"></span>
         <a href="/readme/">What this is</a>
+        <button id="help-btn" type="button">Help</button>
         <button id="stats-btn" type="button">Stats</button>
         <button id="set-password-btn" type="button" hidden>Set password</button>
         <button id="change-user-btn" type="button" hidden>Change user</button>
