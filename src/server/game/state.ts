@@ -9,7 +9,9 @@ export interface GameState {
   status: Status;
   snake: Vec2[]; // head first
   direction: Vec2; // unit vector
-  food: Vec2 | null;
+  // planning.md section 13: up to the active player count, weighted toward
+  // fewer -- never a single nullable item. Empty means none spawned yet.
+  food: Vec2[];
   rawScore: number;
   collectiveScore: number;
   // True once a running game has dropped below 2 active players and its
@@ -43,7 +45,7 @@ export function freshState(): GameState {
     status: "waiting",
     snake: initialSnake(),
     direction: { x: 1, y: 0 },
-    food: null,
+    food: [],
     rawScore: 0,
     collectiveScore: 0,
     pausedWithRun: false,

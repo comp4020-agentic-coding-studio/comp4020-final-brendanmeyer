@@ -11,7 +11,7 @@ import type { CursorRole } from "./roles.ts";
 import { buildYourView, countsTowardSimulation, hasCursor } from "./roles.ts";
 import type { ServerMessage, StateMessage, YourView } from "../../shared/protocol.ts";
 import { centroid } from "./centroid.ts";
-import { eatsFood, spawnFood } from "./food.ts";
+import { capFood, eatsFood, topUpFood } from "./food.ts";
 import { logEvent } from "../log.ts";
 import { applySpeedCap, pickProgression, SPEED_STEP } from "./progression.ts";
 import { createReplayBuffer, maybeSample, takeSamples } from "./replay.ts";
@@ -131,11 +131,20 @@ function tick(): void {
     return;
   }
 
+  // planning.md section 13's hard cap applies every tick, independent of
+  // whether anything was just eaten -- a shrinking active set (someone
+  // disconnecting) can otherwise leave more food on the board than the
+  // new, smaller count allows.
+  if (state.food.length > n) {
+    state = { ...state, food: capFood(state.food, n) };
+    setState(state);
+  }
+
   if (state.status === "waiting") {
     state = {
       ...state,
       status: "running",
-      food: state.food ?? spawnFood(state.snake),
+      food: topUpFood(state.snake, state.food, n),
       pausedWithRun: false,
     };
     setState(state);
@@ -159,17 +168,17 @@ function tick(): void {
     return;
   }
 
-  const ateFood = eatsFood(newHead, state.food);
+  const eaten = eatsFood(newHead, state.food);
   // planning.md section 12: exactly one of two bonuses per pickup, chosen
   // at random -- never both. "grow" is today's existing advance() growth;
   // "speedUp" instead leaves the snake's length unchanged and bumps its
   // speed, capped so the game stays controllable.
-  const progression = ateFood ? pickProgression(Math.random) : null;
+  const progression = eaten ? pickProgression(Math.random) : null;
   const grow = progression === "grow";
   let snakeSpeed = state.snakeSpeed;
   if (progression === "speedUp") snakeSpeed = applySpeedCap(snakeSpeed + SPEED_STEP);
 
-  if (ateFood) {
+  if (eaten) {
     foodEventsThisRun += 1;
     const rawScore = state.rawScore + 100;
     const collectiveScore = state.collectiveScore + foodEventScore(n);
@@ -184,7 +193,10 @@ function tick(): void {
   }
 
   const snake = advance(state.snake, newHead, grow);
-  const food = ateFood ? spawnFood(snake) : state.food;
+  // planning.md section 13: up to n items, weighted toward fewer -- only
+  // re-rolled right when the board's count can actually change (a pickup),
+  // not every tick, so an idle board doesn't fluctuate on its own.
+  const food = eaten ? topUpFood(snake, state.food.filter((item) => item !== eaten), n) : state.food;
   state = { ...state, snake, direction, food, snakeSpeed };
   setState(state);
 

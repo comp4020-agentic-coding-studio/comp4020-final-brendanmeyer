@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eatsFood, pickFoodCount, spawnFood, topUpFood } from "../src/server/game/food.ts";
+import { capFood, eatsFood, pickFoodCount, spawnFood, topUpFood } from "../src/server/game/food.ts";
 import type { Vec2 } from "../src/server/game/state.ts";
 
 // planning.md section 13: up to `activePlayers` food items can exist at
@@ -67,15 +67,32 @@ describe("eatsFood", () => {
 describe("topUpFood", () => {
   const farSnake: Vec2[] = [{ x: 0.01, y: 0.01 }];
 
-  it("adds items up to the rolled target without removing existing ones", () => {
+  it("adds items up to the rolled target", () => {
     const result = topUpFood(farSnake, [], 4, () => 0.95); // rolls k=4
     expect(result).toHaveLength(4);
   });
 
-  it("never shrinks the board below what's already there", () => {
+  it("doesn't add more once already at or above the rolled target", () => {
     const existing: Vec2[] = [{ x: 0.2, y: 0.2 }, { x: 0.8, y: 0.8 }];
-    const result = topUpFood(farSnake, existing, 1, () => 0); // rolls k=1
-    expect(result).toHaveLength(2); // already above target -- nothing removed
+    const result = topUpFood(farSnake, existing, 2, () => 0); // rolls k=1, already at 2
+    expect(result).toHaveLength(2);
     expect(result).toEqual(expect.arrayContaining(existing));
+  });
+});
+
+// planning.md section 13: "the maximum number of food items is the number
+// of active players" -- a hard cap, not just a spawn-time target. Matters
+// when the active count drops (e.g. a disconnect) below food already on
+// the board from a larger group; applied every tick, separately from
+// topUpFood's weighted (and only pickup-triggered) re-roll.
+describe("capFood", () => {
+  it("truncates down to the active player count when fewer players remain", () => {
+    const existing: Vec2[] = [{ x: 0.2, y: 0.2 }, { x: 0.5, y: 0.5 }, { x: 0.8, y: 0.8 }];
+    expect(capFood(existing, 2)).toHaveLength(2);
+  });
+
+  it("leaves food untouched when already within the cap", () => {
+    const existing: Vec2[] = [{ x: 0.2, y: 0.2 }];
+    expect(capFood(existing, 4)).toEqual(existing);
   });
 });

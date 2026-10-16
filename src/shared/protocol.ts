@@ -137,7 +137,9 @@ export interface StateMessage {
   players: PlayerView[];
   you: YourView;
   snake: { path: [number, number][] };
-  food: { x: number; y: number } | null;
+  // planning.md section 13: up to the active player count, weighted toward
+  // fewer -- never a single nullable item.
+  food: { x: number; y: number }[];
   // planning.md section 11: a local display setting, never sent back to
   // the server -- null whenever there's no active player to average.
   centroid: { x: number; y: number } | null;

@@ -39,10 +39,10 @@ export function draw(
     ctx.stroke();
   }
 
-  if (state.food) {
-    ctx.fillStyle = "#fbbf24";
+  ctx.fillStyle = "#fbbf24";
+  for (const food of state.food) {
     ctx.beginPath();
-    ctx.arc(state.food.x * width, state.food.y * height, 8, 0, Math.PI * 2);
+    ctx.arc(food.x * width, food.y * height, 8, 0, Math.PI * 2);
     ctx.fill();
   }
 
