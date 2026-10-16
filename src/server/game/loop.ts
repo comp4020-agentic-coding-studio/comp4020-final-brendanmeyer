@@ -31,7 +31,8 @@ function broadcast(): void {
   const now = Date.now();
   const all = [...connections.values()];
   const withCursor = all.filter((c) => hasCursor(c.role));
-  const activeCount = withCursor.filter((c) => c.role === "active").length;
+  const activePlayers = withCursor.filter((c) => c.role === "active");
+  const activeCount = activePlayers.length;
   const shared: Omit<StateMessage, "you"> = {
     t: "state",
     status: state.status,
@@ -48,6 +49,7 @@ function broadcast(): void {
     })),
     snake: { path: state.snake.map((p): [number, number] => [p.x, p.y]) },
     food: state.food,
+    centroid: activeCount > 0 ? centroid(activePlayers.map((c) => c.lastInput)) : null,
     rawScore: state.rawScore,
     collectiveScore: state.collectiveScore,
     multiplier: activeCount >= 2 ? multiplier(Math.min(activeCount, 12)) : 1,

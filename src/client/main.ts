@@ -78,8 +78,14 @@ let connected = false;
 
 const ghostState = createGhostState();
 void refreshGhost(ghostState);
+// planning.md section 11: a local display setting only -- never reaches the
+// server, same as the ghost-trail toggle below. Defaults to visible (easy
+// mode), matching render.ts's own default.
+let showCentroid = true;
 window.addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() === "g") ghostState.enabled = !ghostState.enabled;
+  const key = e.key.toLowerCase();
+  if (key === "g") ghostState.enabled = !ghostState.enabled;
+  if (key === "c") showCentroid = !showCentroid;
 });
 
 function updateQueueUi(you: StateMessage["you"]): void {
@@ -205,7 +211,7 @@ async function start(): Promise<void> {
 void start();
 
 function frame(): void {
-  if (latestState) draw(ctx, canvas.width, canvas.height, latestState);
+  if (latestState) draw(ctx, canvas.width, canvas.height, latestState, showCentroid);
   const ghostFrame = currentGhostFrame(ghostState, performance.now());
   if (ghostFrame) drawGhost(ctx, canvas.width, canvas.height, ghostFrame);
   requestAnimationFrame(frame);

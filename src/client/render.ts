@@ -11,7 +11,16 @@ export function shouldDrawSnake(status: StateMessage["status"], pausedWithRun: b
   return !(status === "waiting" && pausedWithRun);
 }
 
-export function draw(ctx: CanvasRenderingContext2D, width: number, height: number, state: StateMessage): void {
+// planning.md section 11: a local display setting, not part of the shared
+// simulation -- defaults to visible (easy mode) so a first-time visitor
+// sees where the group is steering without needing it explained.
+export function draw(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  state: StateMessage,
+  showCentroid = true,
+): void {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#0b1021";
   ctx.fillRect(0, 0, width, height);
@@ -35,6 +44,20 @@ export function draw(ctx: CanvasRenderingContext2D, width: number, height: numbe
     ctx.beginPath();
     ctx.arc(state.food.x * width, state.food.y * height, 8, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  if (showCentroid && state.centroid) {
+    ctx.strokeStyle = "#e5e7eb";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(state.centroid.x * width, state.centroid.y * height, 10, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(state.centroid.x * width - 5, state.centroid.y * height);
+    ctx.lineTo(state.centroid.x * width + 5, state.centroid.y * height);
+    ctx.moveTo(state.centroid.x * width, state.centroid.y * height - 5);
+    ctx.lineTo(state.centroid.x * width, state.centroid.y * height + 5);
+    ctx.stroke();
   }
 
   for (const player of state.players) {

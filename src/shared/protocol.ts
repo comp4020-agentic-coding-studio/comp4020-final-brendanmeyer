@@ -138,6 +138,9 @@ export interface StateMessage {
   you: YourView;
   snake: { path: [number, number][] };
   food: { x: number; y: number } | null;
+  // planning.md section 11: a local display setting, never sent back to
+  // the server -- null whenever there's no active player to average.
+  centroid: { x: number; y: number } | null;
   rawScore: number;
   collectiveScore: number;
   multiplier: number;
