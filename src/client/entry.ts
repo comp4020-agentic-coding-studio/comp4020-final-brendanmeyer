@@ -4,7 +4,7 @@
 // (claimName/reserve), this just collects a visitor's preference.
 
 import { PLAYER_COLORS } from "../shared/palette.js";
-import { getStoredColor, getStoredName } from "./net.js";
+import { getStoredColor, getStoredName, getStoredToken } from "./net.js";
 
 export interface EntryResult {
   name: string;
@@ -27,6 +27,10 @@ export function collectEntry(elements: EntryElements): Promise<EntryResult> {
   // needed when retrieving a name from a device that doesn't already hold
   // its reconnect token, so there's nothing to usefully remember here.
   passwordInput.value = "";
+  // A stored token means this browser already *is* that identity -- the
+  // password field exists only to retrieve one from a device that isn't,
+  // so once a token's already held it has nothing left to do here.
+  passwordInput.hidden = getStoredToken() !== undefined;
 
   const buttons = PLAYER_COLORS.map((hex, index) => {
     const button = document.createElement("button");
