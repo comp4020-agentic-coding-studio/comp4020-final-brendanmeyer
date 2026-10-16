@@ -9,7 +9,7 @@
       main { display: flex; flex-direction: column; height: 100%; }
       header { padding: 0.75rem 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; }
       header a { color: #93c5fd; }
-      #fullscreen, #request-join, #accept-offer, #decline-offer, #set-password-btn, #change-user-btn { background: none; border: 1px solid #374151; color: #e5e7eb; border-radius: 4px; padding: 0.15rem 0.5rem; font: inherit; cursor: pointer; }
+      #fullscreen, #request-join, #accept-offer, #decline-offer, #set-password-btn, #change-user-btn, #stats-btn { background: none; border: 1px solid #374151; color: #e5e7eb; border-radius: 4px; padding: 0.15rem 0.5rem; font: inherit; cursor: pointer; }
       #game { flex: 1; width: 100%; display: block; touch-action: none; }
       #last-run { padding: 0 1rem 0.75rem; font-size: 0.9rem; color: #9ca3af; }
       #entry { position: fixed; inset: 0; background: #0b1021; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; }
@@ -27,6 +27,18 @@
       #dialog-confirm, #password-dialog-confirm { background: #6ee7b7; color: #0b1021; border: none; }
       #password-dialog input { font: inherit; padding: 0.4rem 0.6rem; border-radius: 4px; border: 1px solid #374151; background: #111827; color: #e5e7eb; }
       #password-dialog-error { color: #fca5a5; font-size: 0.85rem; margin: 0; min-height: 1.1em; }
+      #stats-dialog .dialog-box { max-width: 40rem; max-height: 85vh; overflow-y: auto; }
+      #stats-dialog h2 { font-size: 1rem; color: #9ca3af; margin: 1rem 0 0; }
+      #stats-dialog dl { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 1rem; margin: 0; }
+      #stats-dialog dt { color: #9ca3af; }
+      #stats-dialog dd { margin: 0; text-align: right; }
+      #stats-dialog table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+      #stats-dialog th, #stats-dialog td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid #1f2937; }
+      #stats-dialog th { color: #9ca3af; font-weight: normal; }
+      #stats-dialog tbody tr { cursor: pointer; }
+      #stats-dialog tbody tr:hover { background: #1f2937; }
+      #replay { width: 100%; max-width: 30rem; aspect-ratio: 1; display: block; background: #0b1021; border: 1px solid #1f2937; margin-top: 0.5rem; }
+      #replay[hidden] { display: none; }
     </style>
   </head>
   <body>
@@ -57,13 +69,31 @@
         </div>
       </div>
     </div>
+    <div id="stats-dialog" class="dialog-overlay" hidden>
+      <div class="dialog-box">
+        <h2>Global stats</h2>
+        <dl id="stats"></dl>
+        <h2>Record runs</h2>
+        <p style="color: #9ca3af; font-size: 0.85rem; margin: 0.5rem 0 0;">Click a run to replay it.</p>
+        <canvas id="replay" hidden></canvas>
+        <table>
+          <thead>
+            <tr><th>Collective score</th><th>Raw score</th><th>Peak players</th><th>When</th></tr>
+          </thead>
+          <tbody id="records"></tbody>
+        </table>
+        <div class="dialog-buttons">
+          <button id="stats-dialog-close" type="button">Close</button>
+        </div>
+      </div>
+    </div>
     <main>
       <header>
         <strong>Collective Snake</strong>
         <span id="status">Connecting…</span>
         <span id="score"></span>
         <a href="/readme/">What this is</a>
-        <a href="/stats.html">Stats</a>
+        <button id="stats-btn" type="button">Stats</button>
         <button id="set-password-btn" type="button" hidden>Set password</button>
         <button id="change-user-btn" type="button" hidden>Change user</button>
         <button id="fullscreen" type="button" hidden>Fullscreen</button>

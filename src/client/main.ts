@@ -2,6 +2,7 @@ import { clearStored, connect, getStoredToken } from "./net.js";
 import { collectEntry } from "./entry.js";
 import { showDialog } from "./dialog.js";
 import { showSetPasswordDialog } from "./passwordDialog.js";
+import { showStatsDialog } from "./statsDialog.js";
 import { trackInput } from "./input.js";
 import { draw, drawGhost } from "./render.js";
 import { setupFullscreen } from "./fullscreen.js";
@@ -34,6 +35,7 @@ const acceptOfferBtn = required(document.querySelector<HTMLButtonElement>("#acce
 const declineOfferBtn = required(document.querySelector<HTMLButtonElement>("#decline-offer"), "missing #decline-offer");
 const setPasswordBtn = required(document.querySelector<HTMLButtonElement>("#set-password-btn"), "missing #set-password-btn");
 const changeUserBtn = required(document.querySelector<HTMLButtonElement>("#change-user-btn"), "missing #change-user-btn");
+const statsBtn = required(document.querySelector<HTMLButtonElement>("#stats-btn"), "missing #stats-btn");
 const queueStatusText = document.createTextNode("");
 required(document.querySelector<HTMLElement>("#queue-status"), "missing #queue-status").prepend(queueStatusText);
 const dialogElements = {
@@ -49,6 +51,13 @@ const passwordDialogElements = {
   cancelButton: required(document.querySelector<HTMLButtonElement>("#password-dialog-cancel"), "missing #password-dialog-cancel"),
   errorEl: required(document.querySelector<HTMLElement>("#password-dialog-error"), "missing #password-dialog-error"),
 };
+const statsDialogElements = {
+  overlay: required(document.querySelector<HTMLElement>("#stats-dialog"), "missing #stats-dialog overlay"),
+  closeButton: required(document.querySelector<HTMLButtonElement>("#stats-dialog-close"), "missing #stats-dialog-close"),
+  statsEl: required(document.querySelector<HTMLElement>("#stats"), "missing #stats element"),
+  recordsEl: required(document.querySelector<HTMLElement>("#records"), "missing #records element"),
+  replayCanvas: required(document.querySelector<HTMLCanvasElement>("#replay"), "missing #replay canvas"),
+};
 
 setupFullscreen(fullscreenBtn);
 
@@ -61,6 +70,11 @@ resize();
 
 let latestState: StateMessage | null = null;
 let previousStatus: StateMessage["status"] | null = null;
+// Read by the stats dialog's close handler (statsDialog.ts's
+// shouldReturnToEntryOnClose) to decide where closing it goes -- back to
+// the game it was laid over if still connected, or the entry screen if
+// that connection was already gone before the dialog even opened.
+let connected = false;
 
 const ghostState = createGhostState();
 void refreshGhost(ghostState);
@@ -105,6 +119,7 @@ async function start(): Promise<void> {
       // the entry screen's own stored-token check (entry.ts) already
       // covers "nothing to change yet" for a fresh visitor.
       changeUserBtn.hidden = false;
+      connected = true;
     },
     onState: (state) => {
       latestState = state;
@@ -138,6 +153,7 @@ async function start(): Promise<void> {
     },
     onDisconnected: () => {
       statusEl.textContent = "Disconnected — likely taken over from another tab";
+      connected = false;
     },
     onNameTaken: () => {
       // Simplest correct thing: reload rather than re-running start() in
@@ -173,6 +189,15 @@ async function start(): Promise<void> {
   changeUserBtn.addEventListener("click", () => {
     clearStored();
     location.reload();
+  });
+  statsBtn.addEventListener("click", () => {
+    void showStatsDialog(statsDialogElements, () => connected).then((toEntry) => {
+      // "Back to the game" needs nothing further -- the dialog's own
+      // close already hid it over an unpaused game underneath. Only the
+      // disconnected case needs an actual navigation, since there's no
+      // live game left for the dialog to have been laid over.
+      if (toEntry) location.reload();
+    });
   });
 
   trackInput(canvas, (pos) => sendInput(pos.x, pos.y));

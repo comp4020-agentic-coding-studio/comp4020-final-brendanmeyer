@@ -14,7 +14,7 @@ Collective Snake is a cooperative Snake variant: no single player steers the sna
 - joining a game already in progress gives you a brief, visible introduction before your cursor starts influencing anything; losing your connection gives the group a grace period, with a flashing cursor, before you're actually counted as gone
 - up to 12 people can play in one run; beyond that you spectate, and can ask to join a FIFO queue that offers you the next open slot with a few seconds to claim it
 - a faint ghost trail of the current record run plays continuously while you play, toggled with `G`
-- a public stats page lists every record run and total play across the whole site, and lets you replay any record run on its own
+- a "Stats" button opens global stats and every record run, with a replay, as a dialog laid over the game rather than a page of its own; closing it returns you to the game you were already playing, or the entry screen if your connection was already gone
 - a name can carry an optional password, set when you first claim it or added later from the game itself if you didn't: with one set, reclaiming that name on a different device needs it; with none, the name is reclaimable by anyone who knows it, no password required at all
 - the entry screen only asks for a password when this browser doesn't already hold an identity; once connected, a "Change user" button is the deliberate way to leave the current one and claim or retrieve a different one
 - every identity, queue, and scoring event is checked and logged server-side, by who did it, in a way that survives a restart or redeploy; what each person may see or change is decided on the server, never trusted from the browser, and that decision is written down in `decisions/`
