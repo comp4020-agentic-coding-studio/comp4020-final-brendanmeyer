@@ -13,9 +13,10 @@ import type { ServerMessage, StateMessage, YourView } from "../../shared/protoco
 import { centroid } from "./centroid.ts";
 import { eatsFood, spawnFood } from "./food.ts";
 import { logEvent } from "../log.ts";
+import { applySpeedCap, pickProgression, SPEED_STEP } from "./progression.ts";
 import { createReplayBuffer, maybeSample, takeSamples } from "./replay.ts";
 import { advance, hitsSelf, hitsWall, steer } from "./snake.ts";
-import { freshState, GAME_OVER_RESET_MS, getState, setState, SNAKE_SPEED, TICK_MS } from "./state.ts";
+import { freshState, GAME_OVER_RESET_MS, getState, setState, TICK_MS } from "./state.ts";
 
 let runStartedAt = Date.now();
 let peakPlayersThisRun = 0;
@@ -150,7 +151,7 @@ function tick(): void {
   const target = centroid(active.map((c) => c.lastInput));
   const head = state.snake[0];
   const direction = steer(state.direction, target, head);
-  const newHead = { x: head.x + direction.x * SNAKE_SPEED, y: head.y + direction.y * SNAKE_SPEED };
+  const newHead = { x: head.x + direction.x * state.snakeSpeed, y: head.y + direction.y * state.snakeSpeed };
 
   if (hitsWall(newHead) || hitsSelf(newHead, state.snake)) {
     finalizeRun(active);
@@ -158,8 +159,17 @@ function tick(): void {
     return;
   }
 
-  const grow = eatsFood(newHead, state.food);
-  if (grow) {
+  const ateFood = eatsFood(newHead, state.food);
+  // planning.md section 12: exactly one of two bonuses per pickup, chosen
+  // at random -- never both. "grow" is today's existing advance() growth;
+  // "speedUp" instead leaves the snake's length unchanged and bumps its
+  // speed, capped so the game stays controllable.
+  const progression = ateFood ? pickProgression(Math.random) : null;
+  const grow = progression === "grow";
+  let snakeSpeed = state.snakeSpeed;
+  if (progression === "speedUp") snakeSpeed = applySpeedCap(snakeSpeed + SPEED_STEP);
+
+  if (ateFood) {
     foodEventsThisRun += 1;
     const rawScore = state.rawScore + 100;
     const collectiveScore = state.collectiveScore + foodEventScore(n);
@@ -168,13 +178,14 @@ function tick(): void {
       rawScore,
       collectiveScore,
       n,
+      progression,
     });
     state = { ...state, rawScore, collectiveScore };
   }
 
   const snake = advance(state.snake, newHead, grow);
-  const food = grow ? spawnFood(snake) : state.food;
-  state = { ...state, snake, direction, food };
+  const food = ateFood ? spawnFood(snake) : state.food;
+  state = { ...state, snake, direction, food, snakeSpeed };
   setState(state);
 
   maybeSample(replayBuffer, Date.now(), runStartedAt, {

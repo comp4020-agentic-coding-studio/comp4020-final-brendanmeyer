@@ -19,6 +19,10 @@ export interface GameState {
   // activated connection gets the 5-second resume countdown (section 7) or
   // the normal 2-second join introduction (section 4).
   pausedWithRun: boolean;
+  // planning.md section 12: bumped by progression.ts's "speedUp" choice on
+  // a food pickup, capped there too. Resets to SNAKE_SPEED each run
+  // (freshState), same as every other per-run field here.
+  snakeSpeed: number;
 }
 
 export const TICK_MS = 66; // ~15Hz
@@ -43,6 +47,7 @@ export function freshState(): GameState {
     rawScore: 0,
     collectiveScore: 0,
     pausedWithRun: false,
+    snakeSpeed: SNAKE_SPEED,
   };
 }
 
