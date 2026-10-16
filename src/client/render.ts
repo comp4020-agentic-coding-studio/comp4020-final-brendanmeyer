@@ -12,14 +12,15 @@ export function shouldDrawSnake(status: StateMessage["status"], pausedWithRun: b
 }
 
 // planning.md section 11: a local display setting, not part of the shared
-// simulation -- defaults to visible (easy mode) so a first-time visitor
-// sees where the group is steering without needing it explained.
+// simulation -- defaults to hidden (hard mode), so a first-time visitor
+// has to actually read the cursors and the snake's movement to find the
+// group's shared target, rather than it being pointed out for them.
 export function draw(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   state: StateMessage,
-  showCentroid = true,
+  showCentroid = false,
 ): void {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#0b1021";

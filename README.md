@@ -14,7 +14,7 @@ Collective Snake is a cooperative Snake variant: no single player steers the sna
 - joining a game already in progress gives you a brief, visible introduction before your cursor starts influencing anything; losing your connection gives the group a grace period, with a flashing cursor, before you're actually counted as gone
 - up to 12 people can play in one run; beyond that you spectate, and can ask to join a FIFO queue that offers you the next open slot with a few seconds to claim it
 - a faint ghost trail of the current record run plays continuously while you play, toggled with `G`
-- the shared centroid the snake is steering toward is shown on screen by default (easy mode); toggle it off with `C` if you'd rather infer the group's target from the cursors alone
+- the shared centroid the snake is steering toward is hidden by default; toggle it on with `C` if you'd rather see it directly instead of inferring it from the cursors
 - each food item eaten randomly either grows the snake or speeds it up a little, never both, so a run gets progressively trickier in one of two different ways
 - more than one food item can be on the board at once, up to however many players are active, though the game favours showing fewer rather than more
 - a "Stats" button opens global stats and every record run, with a replay, as a dialog laid over the game rather than a page of its own; closing it returns you to the game you were already playing, or the entry screen if your connection was already gone

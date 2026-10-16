@@ -79,9 +79,9 @@ let connected = false;
 const ghostState = createGhostState();
 void refreshGhost(ghostState);
 // planning.md section 11: a local display setting only -- never reaches the
-// server, same as the ghost-trail toggle below. Defaults to visible (easy
+// server, same as the ghost-trail toggle below. Defaults to hidden (hard
 // mode), matching render.ts's own default.
-let showCentroid = true;
+let showCentroid = false;
 window.addEventListener("keydown", (e) => {
   const key = e.key.toLowerCase();
   if (key === "g") ghostState.enabled = !ghostState.enabled;
