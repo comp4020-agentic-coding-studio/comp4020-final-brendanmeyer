@@ -78,7 +78,7 @@ export function clearStored(): void {
 }
 
 export interface NetHandlers {
-  onIdentity: (name: string, color: number) => void;
+  onIdentity: (name: string, color: number, hasPassword: boolean) => void;
   onState: (state: Extract<ServerMessage, { t: "state" }>) => void;
   // A tab sharing this browser's localStorage already resumed this token.
   // The caller decides (e.g. via a dialog) and calls Net.takeOver() if so.
@@ -118,12 +118,14 @@ export function connect(name: string, color: number, password: string, handlers:
       storeToken(msg.token);
       storeColor(msg.color);
       storeName(msg.name);
-      handlers.onIdentity(msg.name, msg.color);
+      handlers.onIdentity(msg.name, msg.color, msg.hasPassword);
     } else if (msg.t === "nameInvalid") {
       storeToken(msg.token);
       storeColor(msg.color);
       storeName(msg.assigned);
-      handlers.onIdentity(msg.assigned, msg.color);
+      // Always a fresh claim with a generated pseudonym -- never has a
+      // password yet, so there's nothing to ask the server for here.
+      handlers.onIdentity(msg.assigned, msg.color, false);
     } else if (msg.t === "alreadyConnected") {
       handlers.onAlreadyConnected(msg.name);
     } else if (msg.t === "nameTaken") {

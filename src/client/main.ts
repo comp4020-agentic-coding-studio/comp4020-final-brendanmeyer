@@ -1,6 +1,7 @@
 import { clearStored, connect, getStoredToken } from "./net.js";
 import { collectEntry } from "./entry.js";
 import { showDialog } from "./dialog.js";
+import { showSetPasswordDialog } from "./passwordDialog.js";
 import { trackInput } from "./input.js";
 import { draw, drawGhost } from "./render.js";
 import { setupFullscreen } from "./fullscreen.js";
@@ -31,10 +32,7 @@ const playButton = required(document.querySelector<HTMLButtonElement>("#play"), 
 const requestJoinBtn = required(document.querySelector<HTMLButtonElement>("#request-join"), "missing #request-join");
 const acceptOfferBtn = required(document.querySelector<HTMLButtonElement>("#accept-offer"), "missing #accept-offer");
 const declineOfferBtn = required(document.querySelector<HTMLButtonElement>("#decline-offer"), "missing #decline-offer");
-const passwordUi = required(document.querySelector<HTMLElement>("#password-ui"), "missing #password-ui");
-const setPasswordInput = required(document.querySelector<HTMLInputElement>("#set-password-input"), "missing #set-password-input");
 const setPasswordBtn = required(document.querySelector<HTMLButtonElement>("#set-password-btn"), "missing #set-password-btn");
-const passwordStatusEl = required(document.querySelector<HTMLElement>("#password-status"), "missing #password-status");
 const queueStatusText = document.createTextNode("");
 required(document.querySelector<HTMLElement>("#queue-status"), "missing #queue-status").prepend(queueStatusText);
 const dialogElements = {
@@ -42,6 +40,13 @@ const dialogElements = {
   message: required(document.querySelector<HTMLElement>("#dialog-message"), "missing #dialog-message"),
   confirmButton: required(document.querySelector<HTMLButtonElement>("#dialog-confirm"), "missing #dialog-confirm"),
   cancelButton: required(document.querySelector<HTMLButtonElement>("#dialog-cancel"), "missing #dialog-cancel"),
+};
+const passwordDialogElements = {
+  overlay: required(document.querySelector<HTMLElement>("#password-dialog"), "missing #password-dialog overlay"),
+  input: required(document.querySelector<HTMLInputElement>("#password-dialog-input"), "missing #password-dialog-input"),
+  confirmButton: required(document.querySelector<HTMLButtonElement>("#password-dialog-confirm"), "missing #password-dialog-confirm"),
+  cancelButton: required(document.querySelector<HTMLButtonElement>("#password-dialog-cancel"), "missing #password-dialog-cancel"),
+  errorEl: required(document.querySelector<HTMLElement>("#password-dialog-error"), "missing #password-dialog-error"),
 };
 
 setupFullscreen(fullscreenBtn);
@@ -85,18 +90,16 @@ async function start(): Promise<void> {
   });
 
   const { sendInput, takeOver, requestJoin, acceptOffer, declineOffer, setPassword } = connect(name, color, password, {
-    onIdentity: (identityName) => {
+    onIdentity: (identityName, _color, hasPassword) => {
       // Only hidden once a real identity is confirmed -- a hello can still
       // come back "already taken" or "already playing elsewhere" instead,
       // which needs showing on this screen, not over an unentered game.
       entryOverlay.hidden = true;
       statusEl.textContent = `Playing as ${identityName}`;
-      // The client has no way to know in advance whether this identity
-      // already has a password -- setPassword safely refuses either way,
-      // so the control just stays offered; a successful set or an
-      // "already has one" reply both resolve the question for this
-      // session (see onPasswordSet below).
-      passwordUi.hidden = false;
+      // The server now says up front whether this identity already has a
+      // password -- only an unprotected name gets offered the option at
+      // all, rather than always showing it and reacting to a refusal.
+      setPasswordBtn.hidden = hasPassword;
     },
     onState: (state) => {
       latestState = state;
@@ -139,24 +142,25 @@ async function start(): Promise<void> {
         location.reload();
       });
     },
-    onPasswordSet: (ok, reason) => {
-      if (ok) {
-        passwordStatusEl.textContent = "Password set.";
-        passwordUi.hidden = true;
-      } else if (reason === "alreadyHasPassword") {
-        passwordStatusEl.textContent = "This name already has a password.";
-        passwordUi.hidden = true;
-      } else {
-        passwordStatusEl.textContent = "Enter a password first.";
-      }
-      setPasswordInput.value = "";
+    onPasswordSet: (ok) => {
+      // "alreadyHasPassword" shouldn't be reachable from this dialog at
+      // all now that the button only shows when hasPassword was false,
+      // but hiding on any settled outcome either way is still correct: a
+      // refusal here means nothing changed, and the button's prior
+      // visibility (based on the still-accurate hasPassword from welcome)
+      // already reflected that.
+      if (ok) setPasswordBtn.hidden = true;
     },
   });
 
   requestJoinBtn.addEventListener("click", () => requestJoin());
   acceptOfferBtn.addEventListener("click", () => acceptOffer());
   declineOfferBtn.addEventListener("click", () => declineOffer());
-  setPasswordBtn.addEventListener("click", () => setPassword(setPasswordInput.value));
+  setPasswordBtn.addEventListener("click", () => {
+    void showSetPasswordDialog(passwordDialogElements).then((typed) => {
+      if (typed !== null) setPassword(typed);
+    });
+  });
 
   trackInput(canvas, (pos) => sendInput(pos.x, pos.y));
 }
