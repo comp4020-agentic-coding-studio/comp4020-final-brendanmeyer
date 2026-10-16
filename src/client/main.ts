@@ -33,6 +33,7 @@ const requestJoinBtn = required(document.querySelector<HTMLButtonElement>("#requ
 const acceptOfferBtn = required(document.querySelector<HTMLButtonElement>("#accept-offer"), "missing #accept-offer");
 const declineOfferBtn = required(document.querySelector<HTMLButtonElement>("#decline-offer"), "missing #decline-offer");
 const setPasswordBtn = required(document.querySelector<HTMLButtonElement>("#set-password-btn"), "missing #set-password-btn");
+const changeUserBtn = required(document.querySelector<HTMLButtonElement>("#change-user-btn"), "missing #change-user-btn");
 const queueStatusText = document.createTextNode("");
 required(document.querySelector<HTMLElement>("#queue-status"), "missing #queue-status").prepend(queueStatusText);
 const dialogElements = {
@@ -100,6 +101,10 @@ async function start(): Promise<void> {
       // password -- only an unprotected name gets offered the option at
       // all, rather than always showing it and reacting to a refusal.
       setPasswordBtn.hidden = hasPassword;
+      // Only meaningful once there's an actual identity in play to leave --
+      // the entry screen's own stored-token check (entry.ts) already
+      // covers "nothing to change yet" for a fresh visitor.
+      changeUserBtn.hidden = false;
     },
     onState: (state) => {
       latestState = state;
@@ -160,6 +165,14 @@ async function start(): Promise<void> {
     void showSetPasswordDialog(passwordDialogElements).then((typed) => {
       if (typed !== null) setPassword(typed);
     });
+  });
+  // planning.md's "explicitly starting a new login/session" -- the same
+  // clear-and-reload already used when declining a takeover offer for an
+  // identity that isn't wanted, just reachable deliberately instead of
+  // only as a side effect of that other flow.
+  changeUserBtn.addEventListener("click", () => {
+    clearStored();
+    location.reload();
   });
 
   trackInput(canvas, (pos) => sendInput(pos.x, pos.y));

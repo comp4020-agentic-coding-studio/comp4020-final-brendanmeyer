@@ -16,6 +16,7 @@ Collective Snake is a cooperative Snake variant: no single player steers the sna
 - a faint ghost trail of the current record run plays continuously while you play, toggled with `G`
 - a public stats page lists every record run and total play across the whole site, and lets you replay any record run on its own
 - a name can carry an optional password, set when you first claim it or added later from the game itself if you didn't: with one set, reclaiming that name on a different device needs it; with none, the name is reclaimable by anyone who knows it, no password required at all
+- the entry screen only asks for a password when this browser doesn't already hold an identity; once connected, a "Change user" button is the deliberate way to leave the current one and claim or retrieve a different one
 - every identity, queue, and scoring event is checked and logged server-side, by who did it, in a way that survives a restart or redeploy; what each person may see or change is decided on the server, never trusted from the browser, and that decision is written down in `decisions/`
 
 ## Try it
