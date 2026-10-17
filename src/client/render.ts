@@ -4,11 +4,13 @@ import { playerFlashAlpha } from "./flash.js";
 
 type StateMessage = Extract<ServerMessage, { t: "state" }>;
 
-// A paused run (status "waiting" with a preserved run) hides the snake
-// rather than showing it frozen mid-board; only the fresh, never-started
-// waiting state still shows it at its starting position.
-export function shouldDrawSnake(status: StateMessage["status"], pausedWithRun: boolean): boolean {
-  return !(status === "waiting" && pausedWithRun);
+// A waiting game never shows the snake -- there's nothing meaningful about
+// its position before a second contributor to the centroid exists, and
+// drawing it anyway (whether fresh at its starting position, or frozen
+// mid-board for a paused, in-progress run) made the overlay text sitting
+// on top of it hard to read.
+export function shouldDrawSnake(status: StateMessage["status"]): boolean {
+  return status !== "waiting";
 }
 
 // planning.md section 11: a local display setting, not part of the shared
@@ -26,7 +28,7 @@ export function draw(
   ctx.fillStyle = "#0b1021";
   ctx.fillRect(0, 0, width, height);
 
-  if (shouldDrawSnake(state.status, state.pausedWithRun)) {
+  if (shouldDrawSnake(state.status)) {
     ctx.strokeStyle = "#6ee7b7";
     ctx.lineWidth = 6;
     ctx.lineJoin = "round";
