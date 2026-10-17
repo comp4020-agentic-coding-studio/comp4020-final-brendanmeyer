@@ -23,6 +23,7 @@ Collective Snake is a cooperative Snake variant: no single player steers the sna
 - the entry screen only asks for a password when this browser doesn't already hold an identity; once connected, a "Change user" button is the deliberate way to leave the current one and claim or retrieve a different one
 - every identity, queue, and scoring event is checked and logged server-side, by who did it, in a way that survives a restart or redeploy; what each person may see or change is decided on the server, never trusted from the browser, and that decision is written down in `decisions/`
 - while a game is actually being played, the server also logs every active player's current position every 15 seconds, not just when something happens
+- a returning visitor sees their own high score specifically, not just the site-wide record — their best result across every run they've taken part in
 
 ## Try it
 
@@ -32,8 +33,4 @@ Open this page, pick a name and a colour, then open it again in a different brow
 
 Good doesn't require scale here. This is a small game for a handful of people in one sitting, not a packed arena, and it's judged on that basis. A good version of this app lets a group feel their own movement blend with everyone else's, without needing any instructions beyond what's on the screen. The scoring behind that moment is real, not decorative: it's calculated by the server, and it actually responds to how many people are playing, rewarding bigger groups rather than just allowing them. And when someone comes back later, after a refresh, a restart, or a redeploy, they should still find their own last result waiting for them, not a blank slate.
 
-It isn't yet trying to look especially polished, or to give a return visit anything beyond the shared score. Those matter, and they're coming, but they're not what this version is judged on.
-
-## What comes next
-
-- a personal participation score, separate from the shared score, so a return visit has something of your own to beat
+It isn't yet trying to look especially polished. That matters, and it's coming, but it's not what this version is judged on.
