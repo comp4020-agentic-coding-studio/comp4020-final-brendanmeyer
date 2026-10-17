@@ -32,5 +32,3 @@ Open this page, pick a name and a colour, then open it again in a different brow
 ## What good means for this app
 
 Good doesn't require scale here. This is a small game for a handful of people in one sitting, not a packed arena, and it's judged on that basis. A good version of this app lets a group feel their own movement blend with everyone else's, without needing any instructions beyond what's on the screen. The scoring behind that moment is real, not decorative: it's calculated by the server, and it actually responds to how many people are playing, rewarding bigger groups rather than just allowing them. And when someone comes back later, after a refresh, a restart, or a redeploy, they should still find their own last result waiting for them, not a blank slate.
-
-It isn't yet trying to look especially polished. That matters, and it's coming, but it's not what this version is judged on.
