@@ -103,6 +103,10 @@ describe("formatEvent", () => {
         "run_finished",
         { startedAt: 1, endedAt: 2, rawScore: 100, collectiveScore: 110, isRecord: false, players: [{ playerId: 1, name: "alice" }] },
       ],
+      [
+        "positions_snapshot",
+        { players: [{ playerId: 1, name: "alice", x: 0.5, y: 0.5 }, { playerId: 2, name: "bob", x: 0.2, y: 0.8 }] },
+      ],
     ];
     for (const [type, details] of cases) {
       const line = formatEvent(type, details);
