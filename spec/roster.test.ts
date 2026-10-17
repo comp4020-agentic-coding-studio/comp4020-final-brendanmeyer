@@ -33,8 +33,12 @@ describe("activateRole", () => {
     expect(activateRole("waiting", true, 1)).toBe("resuming");
   });
 
-  it("is immediately active at gameover -- the next run hasn't started yet", () => {
-    expect(activateRole("gameover", false, 1)).toBe("active");
+  it("is immediately active at gameover when it isn't the one bringing the count to two", () => {
+    expect(activateRole("gameover", false, 0)).toBe("active");
+  });
+
+  it("still starts the run at gameover if this join is the one bringing the count to two -- same as a fresh waiting game", () => {
+    expect(activateRole("gameover", false, 1)).toBe("starting");
   });
 });
 

@@ -317,7 +317,7 @@ function handleMessage(socket: WebSocket, raw: string): void {
         // the game being "running" still means an introduction, not an
         // instant jump into active play.
         const from = conn.role;
-        conn.role = activateRole(getState().status, getState().pausedWithRun);
+        conn.role = activateRole(getState().status, getState().pausedWithRun, occupiedSlotCount());
         conn.roleChangedAt = Date.now();
         conn.colorIndex = reserve(colorState, conn.playerId, undefined);
         logEvent("role_changed", conn.playerId, { playerId: conn.playerId, name: conn.name, from, to: conn.role });

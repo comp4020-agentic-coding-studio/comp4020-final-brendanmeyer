@@ -77,11 +77,17 @@ export function draw(
   }
 
   if (state.status === "waiting") {
+    // The second player's own arrival is what actually starts the run --
+    // once they're here (visible in `players` as "starting"), say so
+    // instead of still asking for a second player who's already shown up.
+    const starting = state.players.some((p) => p.state === "starting");
     overlayText(
       ctx,
       width,
       height,
-      "Waiting for a second player — open this page in another browser, or a private/incognito window",
+      starting
+        ? "Starting…"
+        : "Waiting for a second player — open this page in another browser, or a private/incognito window",
     );
   } else if (state.status === "gameover") {
     overlayText(ctx, width, height, "Run over — a new one starts shortly");

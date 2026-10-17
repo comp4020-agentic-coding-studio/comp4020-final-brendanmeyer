@@ -6,7 +6,7 @@
 
 import type { YourView } from "../../shared/protocol.ts";
 
-export type Role = "active" | "introducing" | "leaving" | "resuming" | "spectator" | "queued" | "offered";
+export type Role = "active" | "introducing" | "leaving" | "resuming" | "starting" | "spectator" | "queued" | "offered";
 
 export const MAX_ACTIVE = 12;
 export const INTRO_MS = 2000;
@@ -14,14 +14,22 @@ export const LEAVE_FLASH_MS = 2000;
 export const DISCONNECT_TIMEOUT_MS = 3000;
 export const RESUME_MS = 5000;
 export const OFFER_MS = 5000;
+// The brief moment between a fresh game's second joiner arriving and the
+// run actually beginning to simulate -- neither INTRO_MS (joining a game
+// already running) nor RESUME_MS (restoring a paused one) fit a run's very
+// first start, which otherwise jumped straight from "waiting alone" to
+// "running" with no announcement at all.
+export const STARTING_MS = 2000;
 
-export type CursorRole = "active" | "introducing" | "leaving" | "resuming";
+export type CursorRole = "active" | "introducing" | "leaving" | "resuming" | "starting";
 
-// Only these four ever appear in a PlayerView -- spectators, queued, and
+// Only these five ever appear in a PlayerView -- spectators, queued, and
 // offered visitors are never rendered as players. A type guard so a
 // filtered list narrows to CursorRole without a cast.
 export function hasCursor(role: Role): role is CursorRole {
-  return role === "active" || role === "introducing" || role === "leaving" || role === "resuming";
+  return (
+    role === "active" || role === "introducing" || role === "leaving" || role === "resuming" || role === "starting"
+  );
 }
 
 // Counts toward the simulation (centroid, collisions, the multiplier) --
@@ -50,7 +58,7 @@ export type RoleDecision = Role | "removed" | null;
 // rather than activated anyway once 5s happens to pass.
 export function nextRole(role: Role, roleChangedAt: number, lastActivityAt: number, now: number): RoleDecision {
   if (
-    (role === "active" || role === "introducing" || role === "resuming") &&
+    (role === "active" || role === "introducing" || role === "resuming" || role === "starting") &&
     now - lastActivityAt > DISCONNECT_TIMEOUT_MS
   ) {
     return "leaving";
@@ -59,6 +67,9 @@ export function nextRole(role: Role, roleChangedAt: number, lastActivityAt: numb
     return "active";
   }
   if (role === "resuming" && now - roleChangedAt > RESUME_MS) {
+    return "active";
+  }
+  if (role === "starting" && now - roleChangedAt > STARTING_MS) {
     return "active";
   }
   if (role === "leaving" && now - roleChangedAt > LEAVE_FLASH_MS) {
@@ -81,6 +92,8 @@ export function buildYourView(role: Role, roleChangedAt: number, now: number): Y
       return { role, remainingMs: remaining(LEAVE_FLASH_MS) };
     case "resuming":
       return { role, remainingMs: remaining(RESUME_MS) };
+    case "starting":
+      return { role, remainingMs: remaining(STARTING_MS) };
     case "active":
       return { role: "active" };
     case "spectator":

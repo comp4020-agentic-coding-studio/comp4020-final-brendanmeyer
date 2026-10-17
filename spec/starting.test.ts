@@ -37,7 +37,31 @@ function nextMessage(socket: WebSocket): Promise<ServerMessage> {
   });
 }
 
-function nextStateWhere(socket: WebSocket, predicate: (s: StateMessage) => boolean, timeoutMs: number): Promise<StateMessage> {
+// The very next message isn't necessarily a state broadcast -- a's own
+// welcome arrives first -- so this skips past anything else to find one,
+// the same distinction spec/two-players.test.ts's nextState already makes.
+function nextState(socket: WebSocket): Promise<StateMessage> {
+  return new Promise((resolve, reject) => {
+    const onMessage = (data: Buffer): void => {
+      const msg = JSON.parse(data.toString());
+      if (msg.t === "state") {
+        socket.off("message", onMessage);
+        resolve(msg);
+      }
+    };
+    socket.on("message", onMessage);
+    socket.once("error", reject);
+  });
+}
+
+// Attaches a persistent listener immediately (rather than attaching one
+// only after some earlier await), so no `state` broadcast is lost to the
+// gap between a prior `.once("message", ...)` resolving and a later
+// `.on("message", ...)` being attached -- a real risk here, since the
+// "starting" role (and its broadcasts) exists for a short, fixed window
+// starting the instant the second connection is registered, which can be
+// before any listener this test attaches after that point.
+function watchStates(socket: WebSocket, predicate: (s: StateMessage) => boolean, timeoutMs: number): Promise<StateMessage> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error("predicate never matched in time")), timeoutMs);
     const onMessage = (data: Buffer): void => {
@@ -67,26 +91,35 @@ it(
     await settleSharedState();
 
     const a = await connect();
-    const firstState = await nextMessage(a);
-    // Tolerates resuming an earlier test file's paused run the same way
-    // spec/two-players.test.ts does -- this spec only cares about the
-    // fresh-game path, so skip ahead if there's already a run in progress.
-    if (firstState.t === "state" && firstState.status !== "waiting") {
+    await nextMessage(a); // a's own welcome -- not a state broadcast, discarded
+    const firstState = await nextState(a);
+    // This spec only cares about the fresh-game path -- a paused run left
+    // by an earlier test file resumes instead of starting (pausedWithRun
+    // stays true with status still "waiting", so checking status alone
+    // isn't enough to tell the two apart).
+    if (firstState.pausedWithRun) {
       a.close();
       return;
     }
 
+    // Attached before b even connects, so the very first broadcast
+    // carrying b's "starting" role (which can arrive within one tick of
+    // the hello being processed) is never missed.
+    let bId = -1;
+    const starting = watchStates(a, (s) => bId !== -1 && findPlayer(s, bId)?.state === "starting", 4000);
+    const running = watchStates(a, (s) => s.status === "running", 8000);
+
     const b = await connect();
     const welcomeB = await nextMessage(b);
-    const bId = playerId(welcomeB);
+    bId = playerId(welcomeB);
 
-    const starting = await nextStateWhere(a, (s) => findPlayer(s, bId)?.state === "starting", 2000);
-    expect(starting.status).toBe("waiting"); // not running yet -- still starting
-    expect(findPlayer(starting, bId)?.state).toBe("starting");
+    const startingState = await starting;
+    expect(startingState.status).toBe("waiting"); // not running yet -- still starting
+    expect(findPlayer(startingState, bId)?.state).toBe("starting");
 
-    const running = await nextStateWhere(a, (s) => s.status === "running", 5000);
-    expect(running.activeCount).toBe(2);
-    expect(findPlayer(running, bId)?.state).toBe("active");
+    const runningState = await running;
+    expect(runningState.activeCount).toBe(2);
+    expect(findPlayer(runningState, bId)?.state).toBe("active");
 
     a.close();
     b.close();

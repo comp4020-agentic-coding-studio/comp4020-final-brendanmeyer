@@ -103,9 +103,9 @@ export interface PlayerView {
   x: number;
   y: number;
   color: number;
-  // Only these four roles ever appear here -- spectators, queued, and
+  // Only these five roles ever appear here -- spectators, queued, and
   // offered visitors have no cursor to render.
-  state: "active" | "introducing" | "leaving" | "resuming";
+  state: "active" | "introducing" | "leaving" | "resuming" | "starting";
   // Milliseconds since this player entered `state` -- lets every viewer
   // animate another player's flash, not just their own (StateMessage.you
   // only carries that for the recipient's own connection).
@@ -123,6 +123,7 @@ export type YourView =
   | { role: "introducing"; remainingMs: number }
   | { role: "leaving"; remainingMs: number }
   | { role: "resuming"; remainingMs: number }
+  | { role: "starting"; remainingMs: number }
   | { role: "spectator" }
   | { role: "queued"; position: number; size: number }
   | { role: "offered"; remainingMs: number };
