@@ -6,6 +6,10 @@ dist/
 # production data lives on the one Fly volume at /data, not in the repo.
 /data/
 
+# manual production DB backups (real visitor names/password hashes/tokens) --
+# never belongs in the repo, including once it goes public.
+/backups/
+
 # editor and OS junk
 .DS_Store
 ._*
