@@ -13,6 +13,7 @@ import type { ServerMessage, StateMessage, YourView } from "../../shared/protoco
 import { centroid } from "./centroid.ts";
 import { capFood, eatsFood, topUpFood } from "./food.ts";
 import { logEvent } from "../log.ts";
+import { shouldLogPositions } from "./positionsLog.ts";
 import { applySpeedCap, pickProgression, SPEED_STEP } from "./progression.ts";
 import { createReplayBuffer, maybeSample, takeSamples } from "./replay.ts";
 import { advance, hitsSelf, hitsWall, steer } from "./snake.ts";
@@ -23,6 +24,10 @@ let peakPlayersThisRun = 0;
 let foodEventsThisRun = 0;
 let activeMsThisRun = 0;
 let replayBuffer = createReplayBuffer();
+// Resets with every fresh run (the waiting->running transition below), so
+// a presenter narrating from flyctl logs gets one right away for each new
+// run rather than waiting out a full interval after it starts.
+let lastPositionsLoggedAt: number | null = null;
 
 // A connection's own `you` differs per recipient (its role, its own
 // countdown), so unlike every other field this can't be computed once and
@@ -153,9 +158,23 @@ function tick(): void {
     foodEventsThisRun = 0;
     activeMsThisRun = 0;
     replayBuffer = createReplayBuffer();
+    lastPositionsLoggedAt = null;
   }
   peakPlayersThisRun = Math.max(peakPlayersThisRun, n);
   activeMsThisRun += TICK_MS;
+
+  // A periodic audit-log line naming every active player and their current
+  // cursor position while a game is actually running -- distinct from the
+  // existing transition events (connect/role-change/food/run-finished),
+  // which only fire on something happening, so a presenter narrating from
+  // flyctl logs has something to point at between those.
+  const now = Date.now();
+  if (shouldLogPositions(lastPositionsLoggedAt, now)) {
+    lastPositionsLoggedAt = now;
+    logEvent("positions_snapshot", null, {
+      players: active.map((c) => ({ playerId: c.playerId, name: c.name, x: c.lastInput.x, y: c.lastInput.y })),
+    });
+  }
 
   const target = centroid(active.map((c) => c.lastInput));
   const head = state.snake[0];
