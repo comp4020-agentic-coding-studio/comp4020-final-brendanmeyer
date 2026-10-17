@@ -24,6 +24,7 @@ Collective Snake is a cooperative Snake variant: no single player steers the sna
 - every identity, queue, and scoring event is checked and logged server-side, by who did it, in a way that survives a restart or redeploy; what each person may see or change is decided on the server, never trusted from the browser, and that decision is written down in `decisions/`
 - while a game is actually being played, the server also logs every active player's current position every 15 seconds, not just when something happens
 - a returning visitor sees their own high score specifically, not just the site-wide record — their best result across every run they've taken part in
+- the snake itself stays off screen while waiting, so the "waiting for a second player" message is never crossed out by a line sitting underneath it; the moment a second player actually arrives, the screen says so with a brief "Starting…" before the run begins
 
 ## Try it
 
