@@ -237,9 +237,14 @@ async function loadSummary(): Promise<void> {
   try {
     const res = await fetch(url);
     const summary = await res.json();
-    lastRunEl.textContent = summary.yourLastRun
+    const lastRun = summary.yourLastRun
       ? `Last time: ${summary.yourLastRun.score} raw / ${summary.yourLastRun.collectiveScore} collective`
       : "No previous run yet.";
+    // Only worth showing once there's a real run to compare against --
+    // otherwise it's just "Your high score: 0" sitting next to "No
+    // previous run yet," which says nothing a first-time visitor needs.
+    const highScore = summary.yourHighScore > 0 ? ` · Your high score: ${summary.yourHighScore}` : "";
+    lastRunEl.textContent = lastRun + highScore;
   } catch {
     lastRunEl.textContent = "";
   }

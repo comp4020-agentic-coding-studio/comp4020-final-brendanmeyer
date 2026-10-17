@@ -318,6 +318,10 @@ export function getReplay(runId: number): ReplaySample[] {
 
 export interface Summary {
   yourLastRun: { score: number; collectiveScore: number; endedAt: number } | null;
+  // The visitor's own best collective_score among runs they have a
+  // run_players row for -- 0 with no stored token or no finished runs yet,
+  // the same "nothing yet" default yourLastRun's null already uses.
+  yourHighScore: number;
   allTimeBest: number;
   totalRuns: number;
 }
@@ -334,6 +338,7 @@ export function getSummary(token: string | null): Summary {
   ).best;
 
   let yourLastRun: Summary["yourLastRun"] = null;
+  let yourHighScore = 0;
   const player = token ? findPlayerByToken(token) : undefined;
   if (player) {
     const row = db
@@ -349,9 +354,18 @@ export function getSummary(token: string | null): Summary {
     if (row) {
       yourLastRun = { score: row.rawScore, collectiveScore: row.collectiveScore, endedAt: row.endedAt };
     }
+    const bestRow = db
+      .prepare(
+        `SELECT MAX(r.collective_score) AS best
+         FROM runs r
+         JOIN run_players rp ON rp.run_id = r.id
+         WHERE rp.player_id = ? AND r.ended_at IS NOT NULL`,
+      )
+      .get(player.id) as { best: number | null };
+    yourHighScore = bestRow.best ?? 0;
   }
 
-  return { yourLastRun, allTimeBest: best ?? 0, totalRuns };
+  return { yourLastRun, yourHighScore, allTimeBest: best ?? 0, totalRuns };
 }
 
 export interface EventRow {
