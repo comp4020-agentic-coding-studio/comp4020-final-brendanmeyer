@@ -11,7 +11,9 @@ it("answers with the shape a returning visitor needs", async () => {
 
   const body = await res.json();
   expect(body).toHaveProperty("yourLastRun");
+  expect(body).toHaveProperty("yourHighScore");
   expect(body).toHaveProperty("allTimeBest");
   expect(body).toHaveProperty("totalRuns");
   expect(typeof body.totalRuns).toBe("number");
+  expect(typeof body.yourHighScore).toBe("number");
 });
