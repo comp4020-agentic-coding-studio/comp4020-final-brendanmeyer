@@ -6,7 +6,7 @@
 // check rather than a real setInterval, so the interval is testable
 // without waiting for it.
 
-export const POSITIONS_LOG_INTERVAL_MS = 30_000;
+export const POSITIONS_LOG_INTERVAL_MS = 15_000;
 
 // lastLoggedAt is null before the first log line of a run -- that case
 // always fires immediately rather than waiting out a full interval first.
