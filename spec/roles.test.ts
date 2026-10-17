@@ -6,6 +6,7 @@ import {
   LEAVE_FLASH_MS,
   nextRole,
   RESUME_MS,
+  STARTING_MS,
 } from "../src/server/game/roles.ts";
 
 // planning.md section 5's two timing rules, pure and real-time-independent:
@@ -24,9 +25,10 @@ describe("nextRole", () => {
     expect(nextRole("active", 0, 1000, 1000 + DISCONNECT_TIMEOUT_MS + 1)).toBe("leaving");
   });
 
-  it("applies the same timeout to introducing and resuming connections", () => {
+  it("applies the same timeout to introducing, resuming, and starting connections", () => {
     expect(nextRole("introducing", 0, 1000, 1000 + DISCONNECT_TIMEOUT_MS + 1)).toBe("leaving");
     expect(nextRole("resuming", 0, 1000, 1000 + DISCONNECT_TIMEOUT_MS + 1)).toBe("leaving");
+    expect(nextRole("starting", 0, 1000, 1000 + DISCONNECT_TIMEOUT_MS + 1)).toBe("leaving");
   });
 
   it("never times out a spectator, queued, or offered connection -- they have no cursor to lose", () => {
@@ -55,6 +57,11 @@ describe("nextRole", () => {
     expect(nextRole("resuming", 1000, 1000 + RESUME_MS + 1, 1000 + RESUME_MS + 1)).toBe("active");
   });
 
+  it("completes the starting countdown after its own window, becoming active", () => {
+    expect(nextRole("starting", 1000, 1000 + STARTING_MS - 1, 1000 + STARTING_MS - 1)).toBe(null);
+    expect(nextRole("starting", 1000, 1000 + STARTING_MS + 1, 1000 + STARTING_MS + 1)).toBe("active");
+  });
+
   it("treats a resuming connection as disconnected if it goes stale before the resume completes", () => {
     // 3s staleness is shorter than the 5s resume countdown -- silence
     // should win, not an automatic activation at 5s regardless.
@@ -78,6 +85,10 @@ describe("buildYourView", () => {
 
   it("counts down the resume countdown", () => {
     expect(buildYourView("resuming", 1000, 1000)).toEqual({ role: "resuming", remainingMs: RESUME_MS });
+  });
+
+  it("counts down the starting countdown", () => {
+    expect(buildYourView("starting", 1000, 1000)).toEqual({ role: "starting", remainingMs: STARTING_MS });
   });
 
   it("never reports a negative remainingMs past the threshold", () => {

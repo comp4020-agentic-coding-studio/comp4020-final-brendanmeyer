@@ -4,24 +4,37 @@ import { activateRole, admit } from "../src/server/game/roster.ts";
 
 // planning.md sections 4 and 7: joining a game already running gets the
 // normal 2s introduction; restoring a paused run gets the 5s resume
-// countdown instead; anything else (no game running yet) is immediately
-// active. Pure decision, shared by a direct hello and an accepted queue
-// offer (Phase 6) so both go through the same logic.
+// countdown instead. A fresh game (no run in progress) is immediately
+// active for the very first joiner (nothing to announce the start of --
+// they're alone, waiting), but the second joiner -- the one whose arrival
+// is what actually starts the run -- gets a brief "starting" announcement
+// instead of snapping straight into a moving game. Pure decision, shared
+// by a direct hello and an accepted queue offer (Phase 6) so both go
+// through the same logic.
 describe("activateRole", () => {
-  it("is immediately active when no run is in progress", () => {
-    expect(activateRole("waiting", false)).toBe("active");
+  it("is immediately active for the very first joiner -- nobody else is there yet to start with", () => {
+    expect(activateRole("waiting", false, 0)).toBe("active");
   });
 
-  it("introduces a player joining a game already running", () => {
-    expect(activateRole("running", false)).toBe("introducing");
+  it("starts the game for the second joiner, rather than jumping straight to active", () => {
+    expect(activateRole("waiting", false, 1)).toBe("starting");
   });
 
-  it("resumes a player restoring a paused run instead of introducing them", () => {
-    expect(activateRole("waiting", true)).toBe("resuming");
+  it("is immediately active for a third+ joiner once the game is already past starting", () => {
+    expect(activateRole("waiting", false, 2)).toBe("active");
+  });
+
+  it("introduces a player joining a game already running, regardless of occupied slots", () => {
+    expect(activateRole("running", false, 1)).toBe("introducing");
+    expect(activateRole("running", false, 5)).toBe("introducing");
+  });
+
+  it("resumes a player restoring a paused run instead of starting or introducing them", () => {
+    expect(activateRole("waiting", true, 1)).toBe("resuming");
   });
 
   it("is immediately active at gameover -- the next run hasn't started yet", () => {
-    expect(activateRole("gameover", false)).toBe("active");
+    expect(activateRole("gameover", false, 1)).toBe("active");
   });
 });
 
