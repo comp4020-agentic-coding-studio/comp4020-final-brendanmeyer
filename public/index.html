@@ -9,7 +9,9 @@
       main { display: flex; flex-direction: column; height: 100%; }
       header { padding: 0.75rem 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; }
       header a { color: #93c5fd; }
-      #fullscreen, #request-join, #accept-offer, #decline-offer, #set-password-btn, #change-user-btn, #stats-btn, #help-btn { background: none; border: 1px solid #374151; color: #e5e7eb; border-radius: 4px; padding: 0.15rem 0.5rem; font: inherit; cursor: pointer; }
+      #fullscreen, #request-join, #accept-offer, #decline-offer, #set-password-btn, #change-user-btn, #stats-btn, #help-btn, #toggle-ghost-btn, #toggle-centroid-btn { background: none; border: 1px solid #374151; color: #e5e7eb; border-radius: 4px; padding: 0.15rem 0.5rem; font: inherit; cursor: pointer; }
+      #toggle-ghost-btn[aria-pressed="true"], #toggle-centroid-btn[aria-pressed="true"] { background: #374151; }
+      #help-dialog .toggle-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
       #game { flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; }
       #last-run { padding: 0 1rem 0.75rem; font-size: 0.9rem; color: #9ca3af; }
       #entry { position: fixed; inset: 0; background: #0b1021; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; }
@@ -77,6 +79,14 @@
           <dt>G</dt><dd>toggle the record-run ghost trail</dd>
           <dt>C</dt><dd>toggle the shared centroid marker</dd>
         </dl>
+        <h2 style="margin: 0; font-size: 1rem; color: #9ca3af;">Toggles</h2>
+        <p style="color: #9ca3af; font-size: 0.85rem; margin: 0;">
+          Same as the keys above -- for a phone, or anywhere a keyboard isn't handy.
+        </p>
+        <div class="toggle-row">
+          <button id="toggle-ghost-btn" type="button" aria-pressed="false">Ghost trail: off</button>
+          <button id="toggle-centroid-btn" type="button" aria-pressed="false">Centroid: off</button>
+        </div>
         <div class="dialog-buttons">
           <button id="help-dialog-close" type="button">Close</button>
         </div>

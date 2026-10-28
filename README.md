@@ -18,7 +18,7 @@ Collective Snake is a cooperative Snake variant: no single player steers the sna
 - each food item eaten randomly either grows the snake or speeds it up a little, never both, so a run gets progressively trickier in one of two different ways
 - more than one food item can be on the board at once, up to however many players are active, though the game favours showing fewer rather than more
 - a "Stats" button opens global stats and every record run, with a replay, as a dialog laid over the game rather than a page of its own; closing it returns you to the game you were already playing, or the entry screen if your connection was already gone
-- a "Help" button lists the keyboard shortcuts (movement, and the `G`/`C` toggles above)
+- a "Help" button lists the keyboard shortcuts (movement, and the `G`/`C` toggles above), and also gives the ghost/centroid toggles as actual buttons, for a phone or anywhere a keyboard isn't handy
 - a name can carry an optional password, set when you first claim it or added later from the game itself if you didn't: with one set, reclaiming that name on a different device needs it; with none, the name is reclaimable by anyone who knows it, no password required at all
 - the entry screen only asks for a password when this browser doesn't already hold an identity; once connected, a "Change user" button is the deliberate way to leave the current one and claim or retrieve a different one
 - every identity, queue, and scoring event is checked and logged server-side, by who did it, in a way that survives a restart or redeploy; what each person may see or change is decided on the server, never trusted from the browser, and that decision is written down in `decisions/`

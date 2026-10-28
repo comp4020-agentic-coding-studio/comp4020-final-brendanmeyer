@@ -39,6 +39,8 @@ const statsBtn = required(document.querySelector<HTMLButtonElement>("#stats-btn"
 const helpBtn = required(document.querySelector<HTMLButtonElement>("#help-btn"), "missing #help-btn");
 const helpOverlay = required(document.querySelector<HTMLElement>("#help-dialog"), "missing #help-dialog overlay");
 const helpCloseBtn = required(document.querySelector<HTMLButtonElement>("#help-dialog-close"), "missing #help-dialog-close");
+const toggleGhostBtn = required(document.querySelector<HTMLButtonElement>("#toggle-ghost-btn"), "missing #toggle-ghost-btn");
+const toggleCentroidBtn = required(document.querySelector<HTMLButtonElement>("#toggle-centroid-btn"), "missing #toggle-centroid-btn");
 const queueStatusText = document.createTextNode("");
 required(document.querySelector<HTMLElement>("#queue-status"), "missing #queue-status").prepend(queueStatusText);
 const dialogElements = {
@@ -85,11 +87,29 @@ void refreshGhost(ghostState);
 // server, same as the ghost-trail toggle below. Defaults to hidden (hard
 // mode), matching render.ts's own default.
 let showCentroid = false;
+
+// Shared by the G/C keyboard shortcuts and the Help dialog's buttons (mainly
+// for phones, where there's no easy way to press a letter key) -- both paths
+// go through the same setters so the button labels and aria-pressed state
+// never drift out of sync with what's actually showing.
+function setGhostEnabled(enabled: boolean): void {
+  ghostState.enabled = enabled;
+  toggleGhostBtn.setAttribute("aria-pressed", String(enabled));
+  toggleGhostBtn.textContent = `Ghost trail: ${enabled ? "on" : "off"}`;
+}
+function setCentroidEnabled(enabled: boolean): void {
+  showCentroid = enabled;
+  toggleCentroidBtn.setAttribute("aria-pressed", String(enabled));
+  toggleCentroidBtn.textContent = `Centroid: ${enabled ? "on" : "off"}`;
+}
+
 window.addEventListener("keydown", (e) => {
   const key = e.key.toLowerCase();
-  if (key === "g") ghostState.enabled = !ghostState.enabled;
-  if (key === "c") showCentroid = !showCentroid;
+  if (key === "g") setGhostEnabled(!ghostState.enabled);
+  if (key === "c") setCentroidEnabled(!showCentroid);
 });
+toggleGhostBtn.addEventListener("click", () => setGhostEnabled(!ghostState.enabled));
+toggleCentroidBtn.addEventListener("click", () => setCentroidEnabled(!showCentroid));
 
 // Static reference content, not tied to any connection state -- wired
 // outside start() the same way setupFullscreen already is, so it works
