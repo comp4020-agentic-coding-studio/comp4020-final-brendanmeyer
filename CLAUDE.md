@@ -19,7 +19,7 @@
 13. A "Stats" button opens global stats and every record run, with a replay, as a dialog laid over the game rather than a page of its own; closing it returns to the game if the visitor is still connected, or the entry screen if their connection was already gone.
 14. What each person may see or change is checked on the server, never trusted from the browser, and that decision is written down in `decisions/0002`: no message the protocol accepts can even name another player, so every mutating action already resolves to the caller's own identity by construction.
 15. Every identity, queue, role, and scoring transition is logged server-side, by who did it, in a way that survives a restart or redeploy — a persistent `events` table on the one Fly volume, and `console.log` lines a presenter can tail live with `flyctl logs -a <repo>`. While a game is actually being played, the server also logs every active player's current position on a timer, not just when something happens.
-16. A chosen name is passed through a basic offensive-word filter before it's accepted, per `planning.md` §1 — an invalid or rejected name falls back the same way an already-taken or malformed one does, never left for the player to retype against a silent rejection.
+16. An invalid or rejected name (malformed, or already taken without the right password) falls back to a generated pseudonym, never left for the player to retype against a silent rejection.
 17. A visitor's own high score is shown back to them specifically — their best collective score among every run they've taken part in, not the site-wide record — the same per-visitor trace point 5 already establishes, surfaced alongside their last run rather than as a separate feature.
 18. Both checks the course template fixes (`/` answers 200; `/readme/` serves `README.md`'s headings in order) and every check this repo adds under `spec/` are green before a step is called finished.
 19. Nothing beyond what this file lists is half-built. Whatever's listed as not doing below stays fully out — not started, not stubbed — rather than left half-working and ambiguous.
@@ -27,6 +27,7 @@
 ## What this app doesn't do, on purpose
 
 - **Passwords are not a full account system.** An existing password can't be changed or recovered; the only two actions are setting one at claim time and adding one later to a name that had none.
+- **No offensive-word filter.** `planning.md` §1 names one; an audit found it was never actually built (no word-filter logic anywhere in `src/`), carried forward in documentation only. Dropped rather than retrofitted — see `INPROGRESS.md`.
 
 ## Process rules for this build
 
