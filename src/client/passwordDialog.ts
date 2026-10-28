@@ -29,6 +29,7 @@ export function showSetPasswordDialog(elements: PasswordDialogElements): Promise
       overlay.hidden = true;
       confirmButton.removeEventListener("click", onConfirm);
       cancelButton.removeEventListener("click", onCancel);
+      overlay.removeEventListener("keydown", onKeydown);
       resolve(result);
     }
     function onConfirm(): void {
@@ -41,7 +42,11 @@ export function showSetPasswordDialog(elements: PasswordDialogElements): Promise
     function onCancel(): void {
       cleanup(null);
     }
+    function onKeydown(e: Event): void {
+      if ((e as KeyboardEvent).key === "Escape") onCancel();
+    }
     confirmButton.addEventListener("click", onConfirm);
     cancelButton.addEventListener("click", onCancel);
+    overlay.addEventListener("keydown", onKeydown);
   });
 }

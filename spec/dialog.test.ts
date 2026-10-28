@@ -51,3 +51,35 @@ it("ignores a second click once resolved", async () => {
   elements.cancelButton.click(); // after resolution -- must not change the outcome
   expect(await result).toBe(true);
 });
+
+it("moves focus onto the dialog when opened", () => {
+  const elements = newElements();
+  document.body.appendChild(elements.overlay);
+  elements.overlay.appendChild(elements.cancelButton);
+  elements.overlay.appendChild(elements.confirmButton);
+
+  void showDialog(elements, "message", "confirm");
+
+  expect(document.activeElement).toBe(elements.cancelButton);
+  elements.overlay.remove();
+});
+
+it("closes on Escape the same as cancel, for a confirm dialog", async () => {
+  const elements = newElements();
+  const result = showDialog(elements, "message", "confirm");
+
+  elements.overlay.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+  expect(await result).toBe(false);
+  expect(elements.overlay.hidden).toBe(true);
+});
+
+it("closes on Escape the same as its only button, for an alert dialog", async () => {
+  const elements = newElements();
+  const result = showDialog(elements, "message", "alert");
+
+  elements.overlay.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+  expect(await result).toBe(true);
+  expect(elements.overlay.hidden).toBe(true);
+});

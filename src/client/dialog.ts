@@ -15,12 +15,17 @@ export function showDialog(elements: DialogElements, message: string, kind: "ale
   messageEl.textContent = message;
   cancelButton.hidden = kind === "alert";
   overlay.hidden = false;
+  // Cancel for a confirm (a no-op default, same as dismissing it any other
+  // way); the lone confirm button for an alert, since there's nothing else
+  // on it Escape could mean.
+  (kind === "alert" ? confirmButton : cancelButton).focus();
 
   return new Promise((resolve) => {
     function cleanup(result: boolean): void {
       overlay.hidden = true;
       confirmButton.removeEventListener("click", onConfirm);
       cancelButton.removeEventListener("click", onCancel);
+      overlay.removeEventListener("keydown", onKeydown);
       resolve(result);
     }
     function onConfirm(): void {
@@ -29,7 +34,11 @@ export function showDialog(elements: DialogElements, message: string, kind: "ale
     function onCancel(): void {
       cleanup(false);
     }
+    function onKeydown(e: Event): void {
+      if ((e as KeyboardEvent).key === "Escape") (kind === "alert" ? onConfirm : onCancel)();
+    }
     confirmButton.addEventListener("click", onConfirm);
     cancelButton.addEventListener("click", onCancel);
+    overlay.addEventListener("keydown", onKeydown);
   });
 }

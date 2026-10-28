@@ -149,6 +149,7 @@ export function showStatsDialog(elements: StatsDialogElements, isConnected: () =
   const wasConnected = isConnected();
 
   overlay.hidden = false;
+  closeButton.focus();
   void loadStats(statsEl);
   void loadRecords();
   requestAnimationFrame(replayFrame);
@@ -158,8 +159,13 @@ export function showStatsDialog(elements: StatsDialogElements, isConnected: () =
       stopped = true;
       overlay.hidden = true;
       closeButton.removeEventListener("click", onClose);
+      overlay.removeEventListener("keydown", onKeydown);
       resolve(shouldReturnToEntryOnClose(wasConnected));
     }
+    function onKeydown(e: Event): void {
+      if ((e as KeyboardEvent).key === "Escape") onClose();
+    }
     closeButton.addEventListener("click", onClose);
+    overlay.addEventListener("keydown", onKeydown);
   });
 }

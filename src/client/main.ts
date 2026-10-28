@@ -114,11 +114,16 @@ toggleCentroidBtn.addEventListener("click", () => setCentroidEnabled(!showCentro
 // Static reference content, not tied to any connection state -- wired
 // outside start() the same way setupFullscreen already is, so it works
 // before an identity is even confirmed.
+function closeHelp(): void {
+  helpOverlay.hidden = true;
+}
 helpBtn.addEventListener("click", () => {
   helpOverlay.hidden = false;
+  helpCloseBtn.focus();
 });
-helpCloseBtn.addEventListener("click", () => {
-  helpOverlay.hidden = true;
+helpCloseBtn.addEventListener("click", closeHelp);
+helpOverlay.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeHelp();
 });
 
 function updateQueueUi(you: StateMessage["you"]): void {

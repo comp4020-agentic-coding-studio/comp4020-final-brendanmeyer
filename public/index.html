@@ -57,7 +57,7 @@
       <div id="swatches"></div>
       <button id="play" type="button">Play</button>
     </div>
-    <div id="dialog" class="dialog-overlay" hidden>
+    <div id="dialog" class="dialog-overlay" role="dialog" aria-modal="true" hidden>
       <div class="dialog-box">
         <p id="dialog-message"></p>
         <div class="dialog-buttons">
@@ -66,7 +66,7 @@
         </div>
       </div>
     </div>
-    <div id="password-dialog" class="dialog-overlay" hidden>
+    <div id="password-dialog" class="dialog-overlay" role="dialog" aria-modal="true" hidden>
       <div class="dialog-box">
         <p>Set a password for this name. With one set, you can reclaim it on another device by entering it.</p>
         <input id="password-dialog-input" type="password" placeholder="New password" maxlength="100" />
@@ -77,7 +77,7 @@
         </div>
       </div>
     </div>
-    <div id="help-dialog" class="dialog-overlay" hidden>
+    <div id="help-dialog" class="dialog-overlay" role="dialog" aria-modal="true" hidden>
       <div class="dialog-box has-header">
         <div class="dialog-header">
           <strong>Help</strong>
@@ -101,7 +101,7 @@
         </div>
       </div>
     </div>
-    <div id="stats-dialog" class="dialog-overlay" hidden>
+    <div id="stats-dialog" class="dialog-overlay" role="dialog" aria-modal="true" hidden>
       <div class="dialog-box has-header">
         <div class="dialog-header">
           <strong>Stats</strong>

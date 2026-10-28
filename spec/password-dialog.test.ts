@@ -70,3 +70,14 @@ it("clears any previous error once reopened", () => {
 
   expect(elements.errorEl.textContent).toBe("");
 });
+
+it("closes on Escape the same as cancel", async () => {
+  const elements = newElements();
+  const result = showSetPasswordDialog(elements);
+
+  elements.input.value = "abandoned";
+  elements.overlay.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+  expect(await result).toBeNull();
+  expect(elements.overlay.hidden).toBe(true);
+});
