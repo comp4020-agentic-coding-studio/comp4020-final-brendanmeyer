@@ -34,3 +34,37 @@ it("hides the password field once this browser already holds a reconnect token",
 
   expect(elements.passwordInput.hidden).toBe(true);
 });
+
+it("submits on Enter in the name field, same as clicking Play", async () => {
+  const elements = newElements();
+  const result = collectEntry(elements);
+
+  elements.nameInput.value = "myname";
+  elements.nameInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+  expect((await result).name).toBe("myname");
+});
+
+it("submits on Enter in the password field, same as clicking Play", async () => {
+  const elements = newElements();
+  const result = collectEntry(elements);
+
+  elements.nameInput.value = "myname";
+  elements.passwordInput.value = "secret";
+  elements.passwordInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+  expect(await result).toEqual({ name: "myname", color: 0, password: "secret" });
+});
+
+it("marks the selected colour swatch with aria-pressed, for assistive tech", () => {
+  const elements = newElements();
+  void collectEntry(elements);
+
+  const buttons = Array.from(elements.swatchContainer.children) as HTMLButtonElement[];
+  expect(buttons[0].getAttribute("aria-pressed")).toBe("true");
+  expect(buttons[1].getAttribute("aria-pressed")).toBe("false");
+
+  buttons[1].click();
+  expect(buttons[0].getAttribute("aria-pressed")).toBe("false");
+  expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
+});

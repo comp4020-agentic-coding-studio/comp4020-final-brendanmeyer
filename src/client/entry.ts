@@ -32,16 +32,20 @@ export function collectEntry(elements: EntryElements): Promise<EntryResult> {
   // so once a token's already held it has nothing left to do here.
   passwordInput.hidden = getStoredToken() !== undefined;
 
+  function markSelected(button: HTMLButtonElement, isSelected: boolean): void {
+    button.style.outline = isSelected ? "2px solid white" : "";
+    button.setAttribute("aria-pressed", String(isSelected));
+  }
+
   const buttons = PLAYER_COLORS.map((hex, index) => {
     const button = document.createElement("button");
     button.type = "button";
     button.style.background = hex;
     button.setAttribute("aria-label", `Colour ${index + 1}`);
-    if (index === selected) button.style.outline = "2px solid white";
+    markSelected(button, index === selected);
     button.addEventListener("click", () => {
       selected = index;
-      buttons.forEach((b) => (b.style.outline = ""));
-      button.style.outline = "2px solid white";
+      buttons.forEach((b, i) => markSelected(b, i === index));
     });
     swatchContainer.appendChild(button);
     return button;
@@ -53,8 +57,17 @@ export function collectEntry(elements: EntryElements): Promise<EntryResult> {
   // game the visitor never actually entered. The caller hides the overlay
   // once a real identity is confirmed.
   return new Promise((resolve) => {
-    playButton.addEventListener("click", () => {
+    function submit(): void {
       resolve({ name: nameInput.value, color: selected, password: passwordInput.value });
-    });
+    }
+    playButton.addEventListener("click", submit);
+    // Neither input sits in a <form>, so Enter does nothing by default --
+    // wired directly to the same submit a Play click triggers, since this
+    // screen is otherwise keyboard-only up to this point.
+    for (const input of [nameInput, passwordInput]) {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") submit();
+      });
+    }
   });
 }
