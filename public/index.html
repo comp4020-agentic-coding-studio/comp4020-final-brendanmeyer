@@ -29,8 +29,13 @@
       #dialog-confirm, #password-dialog-confirm { background: #6ee7b7; color: #0b1021; border: none; }
       #password-dialog input { font: inherit; padding: 0.4rem 0.6rem; border-radius: 4px; border: 1px solid #374151; background: #111827; color: #e5e7eb; }
       #password-dialog-error { color: #fca5a5; font-size: 0.85rem; margin: 0; min-height: 1.1em; }
-      #stats-dialog .dialog-box { max-width: 40rem; max-height: 85vh; overflow-y: auto; }
-      #stats-dialog h2 { font-size: 1rem; color: #9ca3af; margin: 1rem 0 0; }
+      #stats-dialog .dialog-box { max-width: 40rem; max-height: 85vh; padding: 0; gap: 0; overflow: hidden; }
+      #stats-dialog .dialog-header { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid #374151; }
+      #stats-dialog .dialog-header strong { font-size: 1.1rem; }
+      #stats-dialog .dialog-close { background: none; border: none; color: #9ca3af; font-size: 1.5rem; line-height: 1; padding: 0 0.25rem; cursor: pointer; }
+      #stats-dialog .dialog-close:hover { color: #e5e7eb; }
+      #stats-dialog .dialog-body { flex: 1 1 auto; overflow-y: auto; padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+      #stats-dialog h2 { font-size: 1rem; color: #9ca3af; margin: 0; }
       #stats-dialog dl { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 1rem; margin: 0; }
       #stats-dialog dt { color: #9ca3af; }
       #stats-dialog dd { margin: 0; text-align: right; }
@@ -94,19 +99,22 @@
     </div>
     <div id="stats-dialog" class="dialog-overlay" hidden>
       <div class="dialog-box">
-        <h2>Global stats</h2>
-        <dl id="stats"></dl>
-        <h2>Record runs</h2>
-        <p style="color: #9ca3af; font-size: 0.85rem; margin: 0.5rem 0 0;">Click a run to replay it.</p>
-        <canvas id="replay" hidden></canvas>
-        <table>
-          <thead>
-            <tr><th>Collective score</th><th>Raw score</th><th>Peak players</th><th>When</th></tr>
-          </thead>
-          <tbody id="records"></tbody>
-        </table>
-        <div class="dialog-buttons">
-          <button id="stats-dialog-close" type="button">Close</button>
+        <div class="dialog-header">
+          <strong>Stats</strong>
+          <button id="stats-dialog-close" type="button" class="dialog-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="dialog-body">
+          <h2>Global stats</h2>
+          <dl id="stats"></dl>
+          <h2>Record runs</h2>
+          <p style="color: #9ca3af; font-size: 0.85rem; margin: 0;">Click a run to replay it.</p>
+          <canvas id="replay" hidden></canvas>
+          <table>
+            <thead>
+              <tr><th>Collective score</th><th>Raw score</th><th>Peak players</th><th>When</th></tr>
+            </thead>
+            <tbody id="records"></tbody>
+          </table>
         </div>
       </div>
     </div>
