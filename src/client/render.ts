@@ -32,10 +32,13 @@ export function draw(
   // marked it as one. A plain gray line just read as a window border, not
   // part of the game, so this uses the diagonal black/yellow hazard-stripe
   // convention instead -- inset by half the stroke width so the whole line
-  // stays on-canvas rather than being clipped at the very edge.
-  ctx.strokeStyle = hazardStripePattern(ctx);
-  ctx.lineWidth = 10;
-  ctx.strokeRect(5, 5, width - 10, height - 10);
+  // stays on-canvas rather than being clipped at the very edge. Sized as a
+  // fraction of the canvas, not a fixed pixel count, so the stripes stay
+  // proportional whether the window is small or fullscreen.
+  const wallWidth = Math.min(20, Math.max(6, Math.round(Math.min(width, height) * 0.015)));
+  ctx.strokeStyle = hazardStripePattern(ctx, Math.round(wallWidth * 1.6));
+  ctx.lineWidth = wallWidth;
+  ctx.strokeRect(wallWidth / 2, wallWidth / 2, width - wallWidth, height - wallWidth);
 
   if (shouldDrawSnake(state.status)) {
     ctx.strokeStyle = "#6ee7b7";
@@ -106,12 +109,15 @@ export function draw(
 // Diagonal black/yellow stripes, the standard "this kills you" game
 // convention -- built on a small offscreen tile rather than hand-drawing
 // diagonals into the main stroke, since CanvasPattern tiles and repeats
-// along the stroked rect for free.
-let cachedHazardPattern: CanvasPattern | null = null;
+// along the stroked rect for free. Cached per tile size (rounded) so
+// resizing the window doesn't rebuild the tile every single frame, but
+// still rescales rather than staying fixed at whatever size it was first
+// drawn.
+const hazardPatternCache = new Map<number, CanvasPattern>();
 
-function hazardStripePattern(ctx: CanvasRenderingContext2D): CanvasPattern {
-  if (cachedHazardPattern) return cachedHazardPattern;
-  const tileSize = 16;
+function hazardStripePattern(ctx: CanvasRenderingContext2D, tileSize: number): CanvasPattern {
+  const cached = hazardPatternCache.get(tileSize);
+  if (cached) return cached;
   const tile = document.createElement("canvas");
   tile.width = tileSize;
   tile.height = tileSize;
@@ -126,8 +132,9 @@ function hazardStripePattern(ctx: CanvasRenderingContext2D): CanvasPattern {
   tileCtx.moveTo(tileSize / 2, tileSize * 1.5);
   tileCtx.lineTo(tileSize * 1.5, tileSize / 2);
   tileCtx.stroke();
-  cachedHazardPattern = ctx.createPattern(tile, "repeat")!;
-  return cachedHazardPattern;
+  const pattern = ctx.createPattern(tile, "repeat")!;
+  hazardPatternCache.set(tileSize, pattern);
+  return pattern;
 }
 
 export interface GhostFrame {
