@@ -33,4 +33,24 @@ describe("currentGhostFrame", () => {
     // now=250 wraps to 50 within a 100ms-long replay -- back near the start.
     expect(currentGhostFrame(state, 250)?.snakePath).toEqual([[0, 0]]);
   });
+
+  it("defaults to disabled -- the G toggle is what turns it on during play", () => {
+    const state = createGhostState();
+    expect(state.enabled).toBe(false);
+  });
+
+  it("is forced on while waiting, regardless of the G toggle's own state", () => {
+    const state = createGhostState();
+    state.samples = [{ elapsedMs: 0, snakePath: [[0, 0]], players: [] }];
+    expect(state.enabled).toBe(false);
+    expect(currentGhostFrame(state, 0, true)?.snakePath).toEqual([[0, 0]]);
+  });
+
+  it("is off by default once not waiting, until G turns it on", () => {
+    const state = createGhostState();
+    state.samples = [{ elapsedMs: 0, snakePath: [[0, 0]], players: [] }];
+    expect(currentGhostFrame(state, 0, false)).toBe(null);
+    state.enabled = true;
+    expect(currentGhostFrame(state, 0, false)?.snakePath).toEqual([[0, 0]]);
+  });
 });
