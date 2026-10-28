@@ -28,6 +28,15 @@ export function draw(
   ctx.fillStyle = "#0b1021";
   ctx.fillRect(0, 0, width, height);
 
+  // The board's edge is a real wall the snake dies against, but nothing
+  // marked it as one. A plain gray line just read as a window border, not
+  // part of the game, so this uses the diagonal black/yellow hazard-stripe
+  // convention instead -- inset by half the stroke width so the whole line
+  // stays on-canvas rather than being clipped at the very edge.
+  ctx.strokeStyle = hazardStripePattern(ctx);
+  ctx.lineWidth = 10;
+  ctx.strokeRect(5, 5, width - 10, height - 10);
+
   if (shouldDrawSnake(state.status)) {
     ctx.strokeStyle = "#6ee7b7";
     ctx.lineWidth = 6;
@@ -92,6 +101,33 @@ export function draw(
   } else if (state.status === "gameover") {
     overlayText(ctx, width, height, "Run over — a new one starts shortly");
   }
+}
+
+// Diagonal black/yellow stripes, the standard "this kills you" game
+// convention -- built on a small offscreen tile rather than hand-drawing
+// diagonals into the main stroke, since CanvasPattern tiles and repeats
+// along the stroked rect for free.
+let cachedHazardPattern: CanvasPattern | null = null;
+
+function hazardStripePattern(ctx: CanvasRenderingContext2D): CanvasPattern {
+  if (cachedHazardPattern) return cachedHazardPattern;
+  const tileSize = 16;
+  const tile = document.createElement("canvas");
+  tile.width = tileSize;
+  tile.height = tileSize;
+  const tileCtx = tile.getContext("2d")!;
+  tileCtx.fillStyle = "#9e9e9e";
+  tileCtx.fillRect(0, 0, tileSize, tileSize);
+  tileCtx.strokeStyle = "#fbbf24";
+  tileCtx.lineWidth = tileSize / 2;
+  tileCtx.beginPath();
+  tileCtx.moveTo(-tileSize / 2, tileSize);
+  tileCtx.lineTo(tileSize, -tileSize / 2);
+  tileCtx.moveTo(tileSize / 2, tileSize * 1.5);
+  tileCtx.lineTo(tileSize * 1.5, tileSize / 2);
+  tileCtx.stroke();
+  cachedHazardPattern = ctx.createPattern(tile, "repeat")!;
+  return cachedHazardPattern;
 }
 
 export interface GhostFrame {
