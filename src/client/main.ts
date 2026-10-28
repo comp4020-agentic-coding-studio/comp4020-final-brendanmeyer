@@ -164,6 +164,11 @@ async function start(): Promise<void> {
       // covers "nothing to change yet" for a fresh visitor.
       changeUserBtn.hidden = false;
       connected = true;
+      // The token this identity's summary needs is only guaranteed to be in
+      // localStorage once onIdentity fires (net.ts stores it right before
+      // calling this) -- firing from here instead of a guessed delay means
+      // this never races the WS handshake.
+      void loadSummary();
     },
     onState: (state) => {
       latestState = state;
@@ -279,5 +284,7 @@ async function loadSummary(): Promise<void> {
     lastRunEl.textContent = "";
   }
 }
-// Gives the WS handshake a moment to persist a token before checking.
-setTimeout(loadSummary, 500);
+// A fresh visitor (no stored token, nothing played yet) still gets the
+// unauthenticated /api/summary fallback -- onIdentity only fires once a
+// real identity exists, so this covers the screen before that happens.
+void loadSummary();
