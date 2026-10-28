@@ -7,14 +7,16 @@ import { createGhostState, currentGhostFrame } from "../src/client/ghost.ts";
 describe("currentGhostFrame", () => {
   it("returns null when disabled or there are no samples", () => {
     const state = createGhostState();
-    expect(currentGhostFrame(state, 100)).toBe(null);
+    state.enabled = true;
+    expect(currentGhostFrame(state, 100)).toBe(null); // enabled, but no samples yet
     state.enabled = false;
     state.samples = [{ elapsedMs: 0, snakePath: [], players: [] }];
-    expect(currentGhostFrame(state, 100)).toBe(null);
+    expect(currentGhostFrame(state, 100)).toBe(null); // samples exist, but disabled
   });
 
   it("picks the latest sample at or before the looped time", () => {
     const state = createGhostState();
+    state.enabled = true;
     state.samples = [
       { elapsedMs: 0, snakePath: [[0, 0]], players: [] },
       { elapsedMs: 100, snakePath: [[1, 1]], players: [] },
@@ -26,6 +28,7 @@ describe("currentGhostFrame", () => {
 
   it("loops back to the start once past the replay's total duration", () => {
     const state = createGhostState();
+    state.enabled = true;
     state.samples = [
       { elapsedMs: 0, snakePath: [[0, 0]], players: [] },
       { elapsedMs: 100, snakePath: [[1, 1]], players: [] },

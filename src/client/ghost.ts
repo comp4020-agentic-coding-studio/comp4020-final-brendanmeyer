@@ -14,8 +14,12 @@ export interface GhostState {
   samples: ReplaySample[];
 }
 
+// Off by default during play -- a player opts in with the G toggle. While
+// waiting for a second player, main.ts forces it on regardless (there's
+// nothing else to look at, and it's a good hint for what the game even is),
+// overriding whatever G was last set to without changing `enabled` itself.
 export function createGhostState(): GhostState {
-  return { enabled: true, samples: [] };
+  return { enabled: false, samples: [] };
 }
 
 export async function refreshGhost(state: GhostState): Promise<void> {
@@ -42,8 +46,10 @@ export interface GhostFrame {
 
 // The frame to draw right now, looping the stored replay on its own local
 // clock -- a fixed artifact, not something synced to the live game's tick.
-export function currentGhostFrame(state: GhostState, nowMs: number): GhostFrame | null {
-  if (!state.enabled || state.samples.length === 0) return null;
+// `forceOn` is the waiting-screen override: true while the game's status is
+// "waiting", regardless of what the G toggle last set `state.enabled` to.
+export function currentGhostFrame(state: GhostState, nowMs: number, forceOn = false): GhostFrame | null {
+  if ((!state.enabled && !forceOn) || state.samples.length === 0) return null;
   const last = state.samples[state.samples.length - 1];
   const totalMs = last.elapsedMs || 1;
   const loopedMs = nowMs % totalMs;

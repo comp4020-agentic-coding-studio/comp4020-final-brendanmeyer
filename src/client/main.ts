@@ -225,7 +225,12 @@ void start();
 
 function frame(): void {
   if (latestState) draw(ctx, canvas.width, canvas.height, latestState, showCentroid);
-  const ghostFrame = currentGhostFrame(ghostState, performance.now());
+  // Forced on while waiting for a second player -- a hint at what the game
+  // even is, on a screen that otherwise has nothing moving. Overrides the G
+  // toggle's own on/off state without changing it, so play resumes with
+  // whatever the player last set once a run actually starts.
+  const waiting = latestState?.status === "waiting";
+  const ghostFrame = currentGhostFrame(ghostState, performance.now(), waiting);
   if (ghostFrame) drawGhost(ctx, canvas.width, canvas.height, ghostFrame);
   requestAnimationFrame(frame);
 }
