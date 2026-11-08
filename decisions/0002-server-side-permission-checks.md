@@ -25,6 +25,10 @@ Reads are a separate question from writes, since the whole point of this app is 
 
 This decision costs nothing additional today, which is itself worth stating plainly: it is a confirmation that the existing design is already correct, not a new restriction layered on top. The cost would show up later, if a future feature genuinely needed one player to act on another's behalf (a kick vote, a moderator role) — at that point a real per-message check would need to be added deliberately, not retrofitted after the fact.
 
+No moderation or kick system exists for the same reason there's nothing to check: with no text chat and no persistent identity beyond a disposable pseudonym, players have no channel through which to harass or abuse one another in the first place — game-design elements the literature on perceived toxicity in multiplayer games names as the relevant variables (Zhang, Moradzadeh, Woan & Kou, "Toxicity by Game Design," *PACM HCI* 8(CHI PLAY), 2024). Building a moderation tool now would be machinery with nothing to act on, the same argument this decision already makes against a full ACL system above.
+
 ## What would change this
 
 If a feature is ever added that lets one player's action affect another's state directly (not just the shared game state everyone already affects together), that message needs an explicit server-side check of whether the sender is allowed to name that target — and a reason, written down here or in a new decision, the same way this one is.
+
+**Sources:**  interaction design and toxicity, [Zhang et al.](https://doi.org/10.1145/3677110) (*PACM HCI*, 2024).
