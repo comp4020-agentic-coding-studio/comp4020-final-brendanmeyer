@@ -65,6 +65,10 @@ it("assigns the requested colour, or a different one if it's already taken", asy
 it(
   "releases a colour once the player is fully removed, not just leaving",
   async () => {
+    // Against a shared or live server, a lingering connection from a
+    // preceding test or a real visitor can already hold the colour this
+    // test expects to reclaim once free; this can fail on a live server for
+    // that reason alone, not a real bug.
     const a = await connect();
     const welcomeA = await nextMessage(a);
     const aColor = colorOf(welcomeA);

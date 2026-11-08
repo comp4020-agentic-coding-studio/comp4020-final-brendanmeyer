@@ -111,6 +111,11 @@ it(
 it(
   "an unanswered offer expires and passes to the next queued spectator; the original must re-request",
   async () => {
+    // This test fills the board to exactly 12 and drives queue state
+    // through several timed transitions in sequence; on a shared or live
+    // server, a lingering connection or real visitor already occupying a
+    // slot can shift every count and ordering that follows. This can fail
+    // on a live server for that reason alone, not a real bug.
     await settleSharedState();
     const twelve = await fillToCapacity();
 

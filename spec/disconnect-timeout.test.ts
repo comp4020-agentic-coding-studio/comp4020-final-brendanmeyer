@@ -83,6 +83,11 @@ it(
     // spec/join-intro.test.ts's setup).
     const baseline = await nextStateWhere(b, (s) => findPlayer(s, aId)?.state === "active", 8000);
     const baselineCount = baseline.activeCount;
+    // The delta assertion below can still fail on a live server if a
+    // lingering connection's own resume countdown completes between this
+    // baseline and the next assertion, changing the count out from under
+    // it -- not a real bug, just a race only a long-lived shared server
+    // can hit.
 
     const t0 = Date.now();
     a.close();

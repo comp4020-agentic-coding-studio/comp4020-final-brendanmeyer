@@ -79,6 +79,11 @@ it(
 it(
   "is null when there's no active player to average",
   async () => {
+    // Against a shared or live server, other connections -- this suite's
+    // own preceding test, or a real visitor -- can still be mid-"resuming"
+    // from an earlier run and count toward the centroid even though this
+    // socket is the only one active right now; this can fail on a live
+    // server for that reason alone, not a real bug.
     const solo = await connect();
     const state = await nextStateWhere(solo, (s) => s.status === "waiting", 3000);
     expect(state.centroid).toBeNull();
